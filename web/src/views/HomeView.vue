@@ -152,9 +152,6 @@
                 <User :size="14" :stroke-width="2" aria-hidden="true" />
                 {{ skill.owner?.name || skill.owner?.username || t('state.unknown') }}
               </span>
-              <span v-if="skill.tags?.length" class="skill-card-tags">
-                <span v-for="tag in skill.tags" :key="tag.id" class="skill-card-tag">{{ tag.name }}</span>
-              </span>
               <span class="skill-card-stats">
                 <span class="skill-card-stat" :title="t('index.downloadCount')">
                   <Download :size="14" :stroke-width="2" aria-hidden="true" />
@@ -353,24 +350,6 @@ onUnmounted(() => {
   background: rgba(251, 191, 36, 0.12);
   border: 1px solid rgba(251, 191, 36, 0.3);
   letter-spacing: 0.04em;
-}
-
-.skill-card-tags {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.25rem;
-  max-width: 12rem;
-}
-.skill-card-tag {
-  font-size: 0.625rem;
-  line-height: 1.2;
-  padding: 0.15rem 0.45rem;
-  border-radius: 9999px;
-  background: rgba(var(--color-neon-rgb), 0.1);
-  border: 1px solid rgba(var(--color-neon-rgb), 0.22);
-  color: var(--color-neon-400);
-  white-space: nowrap;
 }
 
 .home-filter-actions {
