@@ -25,6 +25,12 @@ const projectTargets = ref([]);
 const toastMessage = ref('');
 const loading = ref(false);
 
+function errMessage(e) {
+  if (e == null) return 'unknown';
+  if (typeof e === 'string') return e;
+  return e.message || String(e);
+}
+
 // Settings modal
 const settingsModalOpen = ref(false);
 const settingsTab = ref('general');
@@ -233,11 +239,15 @@ async function loadProjectTargets() {
 }
 
 async function loadConfig() {
-  config.value = await window.skb.invoke('config:get');
-  registryUrl.value = config.value.baseUrl || '';
-  patReady.value = config.value.hasToken;
-  installProjectRoot.value = config.value.projectRoot || '';
-  await loadGlobalTargets();
+  try {
+    config.value = await window.skb.invoke('config:get');
+    registryUrl.value = config.value.baseUrl || '';
+    patReady.value = config.value.hasToken;
+    installProjectRoot.value = config.value.projectRoot || '';
+    await loadGlobalTargets();
+  } catch (e) {
+    showToast(e?.message || String(e));
+  }
 }
 
 async function loadInstalled() {
@@ -245,7 +255,7 @@ async function loadInstalled() {
   try {
     installedSkills.value = await window.skb.invoke('skills:getInstalled');
   } catch (e) {
-    showToast(t('toast.loadFailed', { message: e.message }));
+    showToast(t('toast.loadFailed', { message: errMessage(e) }));
   } finally {
     loading.value = false;
   }
@@ -256,7 +266,7 @@ async function loadMarket() {
   try {
     marketSkills.value = await window.skb.invoke('skills:search', '');
   } catch (e) {
-    showToast(t('toast.loadFailed', { message: e.message }));
+    showToast(t('toast.loadFailed', { message: errMessage(e) }));
   } finally {
     loading.value = false;
   }

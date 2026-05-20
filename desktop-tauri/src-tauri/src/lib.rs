@@ -10,7 +10,8 @@ use tauri_plugin_opener::OpenerExt;
 use tokio::sync::oneshot;
 
 struct AppState {
-    bridge_port: u16,
+    bridge_port: Option<u16>,
+    bridge_error: Option<String>,
     bridge_child: Mutex<Option<std::process::Child>>,
 }
 
@@ -48,6 +49,14 @@ fn packaged_node_binary(resource_dir: &Path) -> PathBuf {
     }
 }
 
+fn is_real_node_binary(path: &Path) -> bool {
+    path.exists()
+        && path
+            .metadata()
+            .map(|m| m.len() > 1_000_000)
+            .unwrap_or(false)
+}
+
 fn resolve_bridge_paths(app: &AppHandle) -> Result<BridgePaths, String> {
     if cfg!(debug_assertions) {
         return Ok(dev_bridge_paths());
@@ -58,25 +67,41 @@ fn resolve_bridge_paths(app: &AppHandle) -> Result<BridgePaths, String> {
         .resource_dir()
         .map_err(|e| format!("resource_dir unavailable: {e}"))?;
 
-    // Tauri preserves the `resources/` prefix from bundle globs → $RESOURCE/resources/...
-    let base = resource_dir.join("resources");
-    let node = packaged_node_binary(&base);
-    let script = base.join("bridge").join("server.mjs");
-    let cli_lib_dir = base.join("cli-lib");
-    let cli_lib = cli_lib_dir.exists().then_some(cli_lib_dir);
+    // Tauri maps `src-tauri/resources/**` → $RESOURCE/resources/** (also try $RESOURCE root).
+    let bases = [resource_dir.join("resources"), resource_dir.clone()];
+    let mut last_err = String::from("bridge resources not found");
 
-    if !node.exists() {
-        return Err(format!("bundled Node not found: {}", node.display()));
-    }
-    if !script.exists() {
-        return Err(format!("bridge script not found: {}", script.display()));
+    for base in &bases {
+        let node = packaged_node_binary(base);
+        let script = base.join("bridge").join("server.mjs");
+        let cli_lib_dir = base.join("cli-lib");
+        let cli_lib = cli_lib_dir.exists().then_some(cli_lib_dir);
+
+        if !script.exists() {
+            last_err = format!("bridge script not found: {}", script.display());
+            continue;
+        }
+        if !is_real_node_binary(&node) {
+            last_err = format!(
+                "bundled Node missing or invalid (need portable Node binary): {}",
+                node.display()
+            );
+            continue;
+        }
+
+        eprintln!(
+            "bridge: using node={} script={}",
+            node.display(),
+            script.display()
+        );
+        return Ok(BridgePaths {
+            node,
+            script,
+            cli_lib,
+        });
     }
 
-    Ok(BridgePaths {
-        node,
-        script,
-        cli_lib,
-    })
+    Err(last_err)
 }
 
 fn spawn_bridge(paths: &BridgePaths) -> Result<(u16, std::process::Child), String> {
@@ -128,13 +153,23 @@ fn normalize_args(value: serde_json::Value) -> Vec<serde_json::Value> {
     }
 }
 
+fn bridge_unavailable_message(state: &AppState) -> String {
+    state.bridge_error.clone().unwrap_or_else(|| {
+        "本地服务未启动，请重新安装或从 Releases 下载最新版 Skill Base Desktop".to_string()
+    })
+}
+
 async fn bridge_call(
     state: &AppState,
     channel: &str,
     args: Vec<serde_json::Value>,
 ) -> Result<serde_json::Value, String> {
+    let port = state
+        .bridge_port
+        .ok_or_else(|| bridge_unavailable_message(state))?;
+
     let client = reqwest::Client::new();
-    let url = format!("http://127.0.0.1:{}/invoke", state.bridge_port);
+    let url = format!("http://127.0.0.1:{port}/invoke");
     let resp = client
         .post(url)
         .json(&serde_json::json!({ "channel": channel, "args": args }))
@@ -308,12 +343,27 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
-            let paths = resolve_bridge_paths(app.handle())?;
-            let (bridge_port, bridge_child) = spawn_bridge(&paths)?;
-            app.manage(AppState {
-                bridge_port,
-                bridge_child: Mutex::new(Some(bridge_child)),
-            });
+            let state = match resolve_bridge_paths(app.handle()).and_then(|paths| {
+                spawn_bridge(&paths).map(|(port, child)| (port, child))
+            }) {
+                Ok((port, child)) => {
+                    eprintln!("bridge ready on port {port}");
+                    AppState {
+                        bridge_port: Some(port),
+                        bridge_error: None,
+                        bridge_child: Mutex::new(Some(child)),
+                    }
+                }
+                Err(e) => {
+                    eprintln!("bridge failed to start: {e}");
+                    AppState {
+                        bridge_port: None,
+                        bridge_error: Some(e),
+                        bridge_child: Mutex::new(None),
+                    }
+                }
+            };
+            app.manage(state);
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![skb_invoke])

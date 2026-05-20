@@ -9,7 +9,5 @@ data
 .cursor/
 .pnpm-store/
 static/
-scripts/
-!desktop-tauri/scripts/
-!desktop-tauri/scripts/**
+/scripts/
 promo-video/

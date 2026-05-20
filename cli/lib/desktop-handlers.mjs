@@ -1,26 +1,14 @@
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
 import { DESKTOP_IPC_CHANNELS } from './desktop-ipc-channels.mjs';
+import { parseSkillMd, displayNameAndDescriptionFromParsed } from './skill-md.js';
 
 export { DESKTOP_IPC_CHANNELS };
 
-/** @type {Promise<typeof import('./skill-md.js')> | null} */
-let skillMdParserPromise = null;
-
-/** @param {string} cliLibRoot */
-function loadSkillMdParser(cliLibRoot) {
-  if (!skillMdParserPromise) {
-    const entry = path.join(cliLibRoot, 'skill-md.js');
-    skillMdParserPromise = import(pathToFileURL(entry).href);
-  }
-  return skillMdParserPromise;
-}
-
 /**
  * @param {object} cli merged desktop CLI module exports
- * @param {string} cliLibRoot absolute path to cli/lib (for skill-md lazy load)
+ * @param {string} cliLibRoot reserved (esbuild bundle uses static cli imports)
  * @param {{
  *   pickDirectory: (defaultPath?: string) => Promise<string | null>,
  *   revealPath: (resolvedPath: string) => Promise<{ ok: true }>,
@@ -50,7 +38,6 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       return { name: fallbackName, description: '' };
     }
     const content = fs.readFileSync(skillMd, 'utf-8');
-    const { parseSkillMd, displayNameAndDescriptionFromParsed } = await loadSkillMdParser(cliLibRoot);
     const parsed = parseSkillMd(content);
     const { name, description } = displayNameAndDescriptionFromParsed(parsed, fallbackName);
     return { name: name || fallbackName, description: description || '' };

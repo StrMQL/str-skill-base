@@ -115,5 +115,5 @@ cd src-tauri && cargo check
 ## 许可与待办
 
 - **Node.js 二进制**：来自 [nodejs.org](https://nodejs.org/) 官方发行版，遵循 [Node.js 许可](https://github.com/nodejs/node/blob/main/LICENSE)；分发时需保留其 LICENSE（当前未自动打包，后续可加）。
-- **代码签名**：CI 未配置 Apple / Windows 签名证书（`CSC_IDENTITY_AUTO_DISCOVERY=false` 等价行为）。
+- **macOS 签名/公证**：见 [docs/desktop-macos-signing.md](../docs/desktop-macos-signing.md)。配置 GitHub Secrets 后 CI 自动签名；未配置时会出现「已损坏」提示。
 - **macOS x64**：CI 仅在 `macos-latest`（arm64）构建；需 Intel 包时加 `darwin-x64` job 或本地 `SKB_NODE_TARGET=darwin-x64 pnpm build`。

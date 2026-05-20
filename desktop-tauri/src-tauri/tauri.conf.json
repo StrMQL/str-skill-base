@@ -39,7 +39,11 @@
       "resources/bridge/*",
       "resources/node/bin/node",
       "resources/node/node.exe"
-    ]
+    ],
+    "macOS": {
+      "entitlements": "./Entitlements.plist",
+      "hardenedRuntime": true
+    }
   },
   "plugins": {}
 }

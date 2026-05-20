@@ -9,12 +9,13 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
+const repoRoot = path.join(root, '..');
 const outFile = path.join(root, 'src-tauri/resources/bridge/server.mjs');
 
 fs.mkdirSync(path.dirname(outFile), { recursive: true });
 
 await esbuild.build({
-  entryPoints: [path.join(root, 'bridge/server.mjs')],
+  entryPoints: [path.join(root, 'bridge/server-bundled.mjs')],
   bundle: true,
   platform: 'node',
   format: 'esm',
@@ -27,7 +28,9 @@ await esbuild.build({
   splitting: false,
   banner: {
     js: "import { createRequire as __skbCreateRequire } from 'module'; const require = __skbCreateRequire(import.meta.url);"
-  }
+  },
+  // cli/lib uses .mjs + .js; resolve from repo root
+  absWorkingDir: repoRoot
 });
 
 console.log(`bridge bundled → ${outFile}`);
