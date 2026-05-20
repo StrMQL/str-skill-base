@@ -647,6 +647,7 @@ function parseYamlFrontmatterBlock(yaml: string) {
     if (blockStarter) {
       i += 1
       const buf: string[] = []
+      const folded = rest === '>' || rest === '>-' || rest === '>+'
       while (i < lines.length) {
         const L = lines[i]
         if (L === undefined) break
@@ -661,7 +662,9 @@ function parseYamlFrontmatterBlock(yaml: string) {
         } else break
         i += 1
       }
-      out[key] = buf.join('\n').trim()
+      out[key] = folded
+        ? buf.join(' ').replace(/\s+/g, ' ').trim()
+        : buf.join('\n').trim()
       continue
     }
     out[key] = rest.replace(/^["'](.+)["']$/, '$1').trim()

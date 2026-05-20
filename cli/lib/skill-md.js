@@ -56,11 +56,59 @@ function splitFrontmatter(content) {
   return { fmYaml, body };
 }
 
+const YAML_BLOCK_STARTERS = new Set(['>', '|', '>-', '>+', '|-', '|+']);
+const YAML_FOLDED_BLOCK_STARTERS = new Set(['>', '>-', '>+']);
+
+/** @see ../../src/utils/skill-md.js */
+function parseYamlFrontmatterBlock(yaml) {
+  const out = {};
+  const lines = yaml.split(/\r?\n/);
+  let i = 0;
+  while (i < lines.length) {
+    const line = lines[i];
+    const m = line.match(/^([\w-]+):\s*(.*)$/);
+    if (!m || !m[1]) {
+      i += 1;
+      continue;
+    }
+    const key = m[1];
+    const rest = (m[2] ?? '').trimEnd();
+    if (YAML_BLOCK_STARTERS.has(rest)) {
+      i += 1;
+      const buf = [];
+      while (i < lines.length) {
+        const L = lines[i];
+        const nextKey = L.match(/^([\w-]+):\s/);
+        if (nextKey && !L.startsWith('  ') && buf.length) break;
+        if (L.startsWith('  ') || (L === '' && buf.length)) {
+          buf.push(L.startsWith('  ') ? L.slice(2) : '');
+        } else if (buf.length) {
+          break;
+        } else if (L === '') {
+          i += 1;
+          continue;
+        } else {
+          break;
+        }
+        i += 1;
+      }
+      out[key] = YAML_FOLDED_BLOCK_STARTERS.has(rest)
+        ? buf.join(' ').replace(/\s+/g, ' ').trim()
+        : buf.join('\n').trim();
+      continue;
+    }
+    out[key] = rest.replace(/^["'](.+)["']$/, '$1').trim();
+    i += 1;
+  }
+  return out;
+}
+
 function parseBodyHeading(body) {
   const lines = body.split(/\r?\n/);
   let name = null;
   let description = null;
   let foundTitle = false;
+  const blockquoteLines = [];
 
   for (const line of lines) {
     const trimmed = line.trim();
@@ -71,10 +119,29 @@ function parseBodyHeading(body) {
       continue;
     }
 
-    if (foundTitle && trimmed && !trimmed.startsWith('#')) {
-      description = trimmed.slice(0, 200);
+    if (!foundTitle) continue;
+
+    if (blockquoteLines.length > 0) {
+      if (trimmed.startsWith('>')) {
+        blockquoteLines.push(trimmed.replace(/^>\s?/, ''));
+        continue;
+      }
+      description = blockquoteLines.join(' ').trim().slice(0, 500);
       break;
     }
+
+    if (trimmed && !trimmed.startsWith('#')) {
+      if (trimmed.startsWith('>')) {
+        blockquoteLines.push(trimmed.replace(/^>\s?/, ''));
+      } else {
+        description = trimmed.slice(0, 500);
+        break;
+      }
+    }
+  }
+
+  if (!description && blockquoteLines.length) {
+    description = blockquoteLines.join(' ').trim().slice(0, 500);
   }
 
   return { name, description };
@@ -88,7 +155,7 @@ export function parseSkillMd(content) {
       fm = parseYaml(fmYaml);
       if (fm === null || typeof fm !== 'object') fm = {};
     } catch {
-      fm = null;
+      fm = parseYamlFrontmatterBlock(fmYaml);
     }
   }
 

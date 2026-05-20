@@ -864,8 +864,12 @@ onMounted(async () => {
   // Load versions
   await loadVersions()
 
-  // Load initial version
-  if (versions.value.length > 0) {
+  // Load initial version (deep link: ?version=vYYYYMMDD.HHmmss)
+  const queryVersion = typeof route.query.version === 'string' ? route.query.version.trim() : ''
+  if (queryVersion && versions.value.some((v) => v.version === queryVersion)) {
+    currentVersion.value = queryVersion
+    await loadVersionZip(currentVersion.value)
+  } else if (versions.value.length > 0) {
     currentVersion.value = versions.value[0]!.version
     await loadVersionZip(currentVersion.value)
   }
