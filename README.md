@@ -14,6 +14,10 @@
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/demo.gif" alt="Skill Base demo" />
 </p>
 
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-market.png" alt="Skill Base desktop — Skill Market" width="720" />
+</p>
+
 ## Skill Base solves distribution, not “file storage”
 
 Many teams already write Skills, but the usual pattern is still to drop them into `.cursor/skills`, `.claude/skills`, `.github/instructions`, and sync via Git. That works until the team grows—and then it hurts.
@@ -339,6 +343,33 @@ For people who avoid the CLI, the web UI supports:
 
 That is what “team edition” means—not everyone must learn Git first.
 
+## Desktop clients
+
+Prefer a native app over the browser or terminal? The desktop client connects to your Skill Base server, browses the team catalog, and installs or updates skills into the right folders for Cursor, Claude Code, Codex, Qoder, and other agents—without hand-copying paths.
+
+**Download (CI builds from `main`):** [GitHub Releases → desktop-latest](https://github.com/ginuim/skill-base/releases/tag/desktop-latest) — macOS `.dmg`, Windows `.exe` (NSIS), Linux `.AppImage` / `.deb`. End users do not need Node.js installed.
+
+| Directory | Stack | Status | Build |
+|-----------|-------|--------|-------|
+| `desktop-tauri/` | Tauri 2 + bundled Node 20 bridge | **Recommended** | `pnpm install && pnpm build` |
+| `desktop/` | Electron | Legacy (maintenance) | `pnpm install && pnpm run dist` |
+
+**Skill Market** — search team skills, favorites, and install from the grid (same server as the web UI).
+
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-local.png" alt="Skill Base desktop — Local Assets" width="720" />
+</p>
+
+**Local Assets** — one view of every on-disk copy of a skill across agent directories, with up-to-date / update-available status.
+
+**Install** — choose global agents, project agents, or custom folders; optionally overwrite an existing folder with the same name.
+
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base desktop — Install to agents" width="720" />
+</p>
+
+CI: [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml) builds Tauri on every push to `main` and updates the `desktop-latest` release. See [desktop-tauri/README.md](desktop-tauri/README.md) for dev/build/troubleshooting and [desktop-tauri/ACCEPTANCE.md](desktop-tauri/ACCEPTANCE.md) for the 21-channel parity checklist. Electron deprecation notes: [desktop/DEPRECATED.md](desktop/DEPRECATED.md).
+
 ## Deployment and backup
 
 ### Docker
@@ -441,19 +472,6 @@ This project stays intentionally small:
 - Solve real problems with minimal data structures, not “enterprise” dependency stacks
 
 Skill Base exists to make team standards actually flow—not to look impressive on a slide deck.
-
-## Desktop clients
-
-Skill Base ships a Tauri desktop app (recommended) and a legacy Electron shell; both share `cli/lib` and the Vue UI under `desktop/src`.
-
-**Download (CI builds from `main`):** [GitHub Releases → desktop-latest](https://github.com/ginuim/skill-base/releases/tag/desktop-latest) — macOS `.dmg`, Windows `.exe`（NSIS）, Linux `.AppImage`/`.deb`. No Node.js install required for end users.
-
-| Directory | Stack | Status | Build |
-|-----------|-------|--------|-------|
-| `desktop-tauri/` | Tauri 2 + bundled Node 20 bridge | **Recommended** | `pnpm install && pnpm build` |
-| `desktop/` | Electron | Legacy (maintenance) | `pnpm install && pnpm run dist` |
-
-CI: [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml) builds Tauri on every push to `main` and updates the `desktop-latest` release. See [desktop-tauri/README.md](desktop-tauri/README.md) for dev/build/troubleshooting and [desktop-tauri/ACCEPTANCE.md](desktop-tauri/ACCEPTANCE.md) for the 21-channel parity checklist. Electron deprecation notes: [desktop/DEPRECATED.md](desktop/DEPRECATED.md).
 
 ## Contributing
 

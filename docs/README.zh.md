@@ -14,6 +14,10 @@
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/demo.gif" alt="Skill Base 运行演示" />
 </p>
 
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-market.png" alt="Skill Base 桌面端 — 技能市场" width="720" />
+</p>
+
 ## Skill Base 解决的不是“存文件”，而是团队分发
 
 很多团队已经在写 Skill，但常见做法还是把它们扔进项目里的 `.cursor/skills`、`.claude/skills`、`.github/instructions`，再靠 Git 同步。这个办法一开始很省事，团队一变大就开始恶心人。
@@ -325,6 +329,33 @@ description: "Internal Vue3 admin best practices. Triggers on requests to create
 **GitHub 导入（服务端）：** 可选环境变量 `GITHUB_TOKEN` 或 `SKILL_BASE_GITHUB_TOKEN` 提高 GitHub API 限额；`SKILL_BASE_GITHUB_IMPORT_MAX_ZIP_MB` 限制下载体积（默认 `50`）；`SKILL_BASE_GITHUB_CONNECTIVITY_TIMEOUT_MS` 调整连通性探测超时（默认 `8000`）。发布页会请求 `GET /api/v1/skills/import/github/connectivity` 展示**服务端**能否访问 GitHub（浏览器翻墙不能代替服务器出网）。暂不支持私有仓库。
 
 **CLI：**`skb import-github owner/repo`（别名 `skb import`），支持 `--ref`、`--subpath`、`--target`、`--changelog`，以及仅预览的 `--dry-run`。
+
+## 桌面客户端
+
+不想只用浏览器或命令行？桌面端连接你的 Skill Base 服务，浏览团队技能库，并一键安装、更新到 Cursor、Claude Code、Codex、Qoder 等各助手的 skills 目录，不用手抄路径。
+
+**下载（`main` 分支 CI 构建）：** [GitHub Releases → desktop-latest](https://github.com/ginuim/skill-base/releases/tag/desktop-latest) — macOS `.dmg`、Windows `.exe`（NSIS）、Linux `.AppImage` / `.deb`。终端用户无需单独安装 Node.js。
+
+| 目录 | 技术栈 | 状态 | 构建 |
+|------|--------|------|------|
+| `desktop-tauri/` | Tauri 2 + 内置 Node 20 bridge | **推荐** | `pnpm install && pnpm build` |
+| `desktop/` | Electron | 遗留（维护模式） | `pnpm install && pnpm run dist` |
+
+**技能市场** — 与 Web 端同一套目录：搜索、收藏、从卡片安装。
+
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-local.png" alt="Skill Base 桌面端 — 本地资产" width="720" />
+</p>
+
+**本地资产** — 汇总各 Agent 目录下的同名 Skill 安装记录，并显示是否已是最新版本。
+
+**安装** — 选择全局 Agent、项目 Agent 或自定义目录；可勾选覆盖同名文件夹。
+
+<p align="center">
+  <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base 桌面端 — 安装到 Agent" width="720" />
+</p>
+
+CI：[`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml) 在每次推送到 `main` 时构建 Tauri 并更新 `desktop-latest` 发布。开发与排障见 [desktop-tauri/README.md](../desktop-tauri/README.md)，21 通道 IPC 验收见 [desktop-tauri/ACCEPTANCE.md](../desktop-tauri/ACCEPTANCE.md)。Electron 弃用说明：[desktop/DEPRECATED.md](../desktop/DEPRECATED.md)。
 
 ## 部署与备份
 
