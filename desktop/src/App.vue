@@ -1,9 +1,13 @@
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 
 const currentTab = ref('installed');
 const searchQuery = ref('');
 const marketQuery = ref('');
+const marketOnlyFavorites = ref(false);
+const marketSelectedTagIds = ref([]);
+const showMarketTagDropdown = ref(false);
+const marketTagDropdownRef = ref(null);
 
 const config = ref({ baseUrl: '', username: null, hasToken: false, projectRoot: '' });
 const installedSkills = ref([]);
@@ -14,7 +18,8 @@ const projectTargets = ref([]);
 const toastMessage = ref('');
 const loading = ref(false);
 
-// Settings
+// Settings modal
+const settingsModalOpen = ref(false);
 const registryUrl = ref('');
 const verificationCode = ref('');
 const patReady = ref(false);
@@ -57,6 +62,24 @@ const PATH_DISPLAY_MAX = 52;
 const updatesAvailable = computed(() =>
   installedSkills.value.filter((s) => s.version && s.latest && s.version !== s.latest).length
 );
+
+const currentTabLabel = computed(() => {
+  if (currentTab.value === 'installed') return '本地资产';
+  if (currentTab.value === 'market') return '技能市场';
+  return currentTab.value;
+});
+
+const updateSelectedVersionDetail = computed(() =>
+  updateVersions.value.find((v) => v.version === updateSelectedVersion.value) || null
+);
+
+const canOpenUpdateVersionDiff = computed(() => {
+  const installed = updateSkill.value?.version;
+  const selected = updateSelectedVersion.value;
+  return Boolean(
+    installed && selected && installed !== selected && updateVersions.value.length >= 2
+  );
+});
 
 const canConfirmInstall = computed(() => {
   if (installTargetTab.value === 'custom') return selectedCustomDirs.value.length > 0;
@@ -118,9 +141,64 @@ function formatPath(p, maxLen = PATH_DISPLAY_MAX) {
   return `${display.slice(0, edge)}…${display.slice(-edge)}`;
 }
 
+function versionUploaderLabel(version) {
+  const u = version?.uploader;
+  if (!u) return '未知';
+  return u.name || u.username || '未知';
+}
+
+/** versions 按 created_at 降序；返回 diff 页所需的 version_a（旧）/ version_b（新） */
+function diffVersionPair(installedVer, selectedVer, versionsList) {
+  const idxInstalled = versionsList.findIndex((v) => v.version === installedVer);
+  const idxSelected = versionsList.findIndex((v) => v.version === selectedVer);
+  if (idxInstalled === -1 || idxSelected === -1) {
+    return { version_a: installedVer, version_b: selectedVer };
+  }
+  return idxInstalled > idxSelected
+    ? { version_a: installedVer, version_b: selectedVer }
+    : { version_a: selectedVer, version_b: installedVer };
+}
+
+async function openUpdateVersionOnline(page = 'detail') {
+  const skill = updateSkill.value;
+  if (!skill?.skillId || !updateSelectedVersion.value) return;
+  if (!config.value.baseUrl) {
+    promptConfigureServer();
+    return;
+  }
+  try {
+    const payload = { skillId: skill.skillId };
+    if (page === 'diff' && canOpenUpdateVersionDiff.value) {
+      const pair = diffVersionPair(
+        skill.version,
+        updateSelectedVersion.value,
+        updateVersions.value
+      );
+      payload.page = 'diff';
+      payload.version_a = pair.version_a;
+      payload.version_b = pair.version_b;
+    } else {
+      payload.version = updateSelectedVersion.value;
+    }
+    await window.skb.invoke('skills:openWebPage', payload);
+  } catch (e) {
+    showToast(`打开失败: ${e.message}`);
+  }
+}
+
 function openPathsModal(skill) {
   pathsModalSkill.value = skill;
   pathsModalOpen.value = true;
+}
+
+const revealPathHint = '在 Finder / 资源管理器中打开';
+
+async function revealInstallPath(installPath) {
+  try {
+    await window.skb.invoke('shell:revealPath', installPath);
+  } catch (e) {
+    showToast(`无法打开: ${e.message}`);
+  }
 }
 
 function isInstalled(skillId) {
@@ -165,14 +243,100 @@ async function loadInstalled() {
   }
 }
 
-async function searchMarket() {
+async function loadMarket() {
   loading.value = true;
   try {
-    marketSkills.value = await window.skb.invoke('skills:search', marketQuery.value);
+    marketSkills.value = await window.skb.invoke('skills:search', '');
   } catch (e) {
-    showToast(`搜索失败: ${e.message}`);
+    showToast(`加载失败: ${e.message}`);
   } finally {
     loading.value = false;
+  }
+}
+
+const marketAvailableTags = computed(() => {
+  const map = new Map();
+  for (const skill of marketSkills.value) {
+    for (const tag of skill.tags || []) {
+      if (!map.has(tag.id)) map.set(tag.id, tag);
+    }
+  }
+  return [...map.values()].sort((a, b) => a.name.localeCompare(b.name));
+});
+
+const filteredMarketSkills = computed(() => {
+  let result = marketSkills.value;
+
+  if (marketOnlyFavorites.value) {
+    result = result.filter((skill) => skill.is_favorited);
+  }
+
+  const tagIds = marketSelectedTagIds.value;
+  if (tagIds.length > 0) {
+    const need = new Set(tagIds);
+    result = result.filter((skill) => {
+      const have = (skill.tags || []).map((t) => t.id);
+      return have.some((id) => need.has(id));
+    });
+  }
+
+  const q = marketQuery.value.trim().toLowerCase();
+  if (q) {
+    result = result.filter(
+      (skill) =>
+        skill.name?.toLowerCase().includes(q) ||
+        skill.description?.toLowerCase().includes(q) ||
+        skill.id?.toLowerCase().includes(q)
+    );
+  }
+
+  return result;
+});
+
+function isMarketTagSelected(id) {
+  return marketSelectedTagIds.value.includes(id);
+}
+
+function toggleMarketTag(id) {
+  const cur = marketSelectedTagIds.value;
+  const i = cur.indexOf(id);
+  if (i === -1) marketSelectedTagIds.value = [...cur, id];
+  else marketSelectedTagIds.value = cur.filter((x) => x !== id);
+}
+
+function clearMarketTagFilter() {
+  marketSelectedTagIds.value = [];
+}
+
+function toggleMarketTagDropdown() {
+  showMarketTagDropdown.value = !showMarketTagDropdown.value;
+}
+
+function closeMarketTagDropdown() {
+  showMarketTagDropdown.value = false;
+}
+
+function onDocumentPointerDown(e) {
+  if (!showMarketTagDropdown.value) return;
+  const root = marketTagDropdownRef.value;
+  if (root?.contains(e.target)) return;
+  closeMarketTagDropdown();
+}
+
+function marketOwnerLabel(skill) {
+  return skill.owner?.name || skill.owner?.username || skill.id;
+}
+
+async function openMarketSkillDetail(skill) {
+  if (!skill?.id) return;
+  if (!config.value.baseUrl) {
+    promptConfigureServer();
+    return;
+  }
+  try {
+    await window.skb.invoke('skills:openWebPage', { skillId: skill.id });
+  } catch (e) {
+    showToast(`打开失败: ${e.message}`);
   }
 }
 
@@ -397,6 +561,26 @@ async function openLoginPage() {
   await window.skb.invoke('auth:openLogin');
 }
 
+async function logout() {
+  try {
+    await window.skb.invoke('auth:logout');
+    patReady.value = false;
+    await loadConfig();
+    showToast('已退出登录');
+  } catch (e) {
+    showToast(`退出失败: ${e.message}`);
+  }
+}
+
+function openSettingsModal() {
+  settingsModalOpen.value = true;
+}
+
+function promptConfigureServer() {
+  showToast('请先在设置中配置服务器地址');
+  openSettingsModal();
+}
+
 function toggleUpdatePath(p) {
   const idx = updateSelectedPaths.value.indexOf(p);
   if (idx === -1) updateSelectedPaths.value.push(p);
@@ -436,12 +620,17 @@ const filteredProjectTargets = computed(() => {
 
 watch(currentTab, (tab) => {
   if (tab === 'installed') loadInstalled();
-  if (tab === 'market' && marketSkills.value.length === 0) searchMarket();
+  if (tab === 'market' && marketSkills.value.length === 0) loadMarket();
 });
 
 onMounted(async () => {
+  document.addEventListener('mousedown', onDocumentPointerDown, true);
   await loadConfig();
   await loadInstalled();
+});
+
+onUnmounted(() => {
+  document.removeEventListener('mousedown', onDocumentPointerDown, true);
 });
 </script>
 
@@ -474,10 +663,7 @@ onMounted(async () => {
       </nav>
 
       <div class="sidebar-bottom">
-        <button
-          :class="['nav-btn', { active: currentTab === 'settings' }]"
-          @click="currentTab = 'settings'"
-        >
+        <button class="nav-btn" @click="openSettingsModal">
           <i class="fa-solid fa-sliders"></i>
           连接设置
         </button>
@@ -501,9 +687,16 @@ onMounted(async () => {
           >
             {{ formatPath(config.projectRoot || '~', 40) }}
           </button>
-          <span class="breadcrumb">/ {{ currentTab }}</span>
+          <span class="breadcrumb">/ {{ currentTabLabel }}</span>
         </div>
-        <div class="top-bar-right">
+      </header>
+
+      <div
+        v-if="currentTab === 'installed' || currentTab === 'market'"
+        class="content-toolbar"
+        :class="{ 'content-toolbar--market': currentTab === 'market' }"
+      >
+        <div class="toolbar-row">
           <div class="search-box">
             <i class="fa-solid fa-magnifying-glass"></i>
             <input
@@ -513,24 +706,98 @@ onMounted(async () => {
               placeholder="搜索本地 Skill..."
             />
             <input
-              v-else-if="currentTab === 'market'"
+              v-else
               v-model="marketQuery"
               type="search"
-              placeholder="搜索市场 Skill..."
-              @keydown.enter="searchMarket"
+              placeholder="搜索技能名称、描述..."
             />
-            <input v-else type="search" placeholder="Search..." disabled />
+            <button
+              v-if="currentTab === 'market' && marketQuery"
+              type="button"
+              class="search-clear-btn"
+              title="清除搜索"
+              @click="marketQuery = ''"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
           </div>
+
+          <div v-if="currentTab === 'market'" class="market-filter-actions">
           <button
-            v-if="currentTab === 'market'"
-            class="btn-ghost"
-            style="padding: 0.35rem 0.75rem; font-size: 0.8125rem"
-            @click="searchMarket"
+            type="button"
+            class="filter-chip"
+            :class="{ 'filter-chip--active': marketOnlyFavorites }"
+            @click="marketOnlyFavorites = !marketOnlyFavorites"
           >
-            搜索
+            <i class="fa-solid fa-heart"></i>
+            仅收藏
           </button>
+
+          <div
+            v-if="marketAvailableTags.length > 0"
+            ref="marketTagDropdownRef"
+            class="tag-filter-dropdown"
+            :class="{ 'tag-filter-dropdown--open': showMarketTagDropdown }"
+          >
+            <button
+              type="button"
+              class="filter-chip tag-filter-trigger"
+              :class="{ 'filter-chip--active': marketSelectedTagIds.length > 0 }"
+              @click="toggleMarketTagDropdown"
+            >
+              <i class="fa-solid fa-tags"></i>
+              标签
+              <span v-if="marketSelectedTagIds.length > 0" class="tag-filter-badge">
+                {{ marketSelectedTagIds.length }}
+              </span>
+              <i class="fa-solid fa-chevron-down tag-filter-chevron"></i>
+            </button>
+            <div
+              v-show="showMarketTagDropdown"
+              class="tag-filter-panel"
+            >
+              <div class="tag-filter-panel-header">
+                <p class="tag-filter-hint">可多选，匹配任一标签即显示</p>
+                <button
+                  v-if="marketSelectedTagIds.length > 0"
+                  type="button"
+                  class="tag-filter-clear"
+                  @click="clearMarketTagFilter"
+                >
+                  <i class="fa-solid fa-xmark"></i>
+                  清除
+                </button>
+              </div>
+              <div class="tag-filter-options">
+                <button
+                  v-for="tag in marketAvailableTags"
+                  :key="tag.id"
+                  type="button"
+                  class="tag-filter-option"
+                  :class="{ 'tag-filter-option--active': isMarketTagSelected(tag.id) }"
+                  @click="toggleMarketTag(tag.id)"
+                >
+                  <span class="tag-filter-option-check">
+                    <i v-if="isMarketTagSelected(tag.id)" class="fa-solid fa-check"></i>
+                  </span>
+                  <span class="tag-filter-option-label">{{ tag.name }}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            class="btn-ghost toolbar-refresh-btn"
+            :disabled="loading"
+            title="从服务器刷新列表"
+            @click="loadMarket"
+          >
+            <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+          </button>
+          </div>
         </div>
-      </header>
+      </div>
 
       <div class="content-area">
         <Transition name="fade" mode="out-in">
@@ -560,7 +827,7 @@ onMounted(async () => {
             <div v-else-if="!filteredInstalled().length" class="empty-state">
               暂无本地安装记录，前往技能市场安装。
             </div>
-            <div v-else class="skill-grid-2">
+            <div v-else class="skill-grid-3">
               <div
                 v-for="skill in filteredInstalled()"
                 :key="skill.skillId"
@@ -609,15 +876,17 @@ onMounted(async () => {
                   </div>
                 </div>
                 <div class="skill-dirs">
-                  <span
+                  <button
                     v-for="inst in skill.installs.slice(0, DIR_PREVIEW_COUNT)"
                     :key="inst.installPath"
-                    class="dir-tag"
-                    :title="inst.installPath"
+                    type="button"
+                    class="dir-tag dir-tag--reveal"
+                    :title="`${inst.installPath}\n${revealPathHint}`"
+                    @click="revealInstallPath(inst.installPath)"
                   >
-                    <i class="fa-solid fa-folder"></i>
+                    <i class="fa-solid fa-folder-open"></i>
                     <span class="dir-tag-text">{{ formatPath(inst.installPath) }}</span>
-                  </span>
+                  </button>
                   <button
                     v-if="skill.installs.length > DIR_PREVIEW_COUNT"
                     type="button"
@@ -646,25 +915,54 @@ onMounted(async () => {
             <div v-if="loading && !marketSkills.length" class="empty-state">
               <i class="fa-solid fa-circle-notch fa-spin"></i> 加载中...
             </div>
-            <div v-else-if="!marketSkills.length" class="empty-state">
-              无结果，尝试其他关键词或检查服务器连接。
+            <div v-else-if="!filteredMarketSkills.length" class="empty-state">
+              <template v-if="marketQuery || marketOnlyFavorites || marketSelectedTagIds.length">
+                无匹配结果，请调整搜索或筛选条件。
+              </template>
+              <template v-else>
+                暂无技能，请检查服务器连接或点击刷新。
+              </template>
             </div>
             <div v-else class="skill-grid-3">
               <div
-                v-for="skill in marketSkills"
+                v-for="skill in filteredMarketSkills"
                 :key="skill.id"
                 class="market-card glass-panel"
               >
                 <div class="market-card-glow"></div>
                 <div class="market-card-header">
                   <h3>{{ skill.name }}</h3>
-                  <span class="version-tag">v{{ skill.latest_version || '-' }}</span>
+                  <div class="market-card-header-actions">
+                    <span class="version-tag">v{{ skill.latest_version || '-' }}</span>
+                    <button
+                      type="button"
+                      class="btn-icon market-detail-btn"
+                      title="在浏览器中打开详情"
+                      @click="openMarketSkillDetail(skill)"
+                    >
+                      <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    </button>
+                  </div>
                 </div>
                 <p class="skill-desc line-clamp-2">{{ skill.description }}</p>
+                <div class="market-card-stats">
+                  <span class="market-stat" title="下载次数">
+                    <i class="fa-solid fa-download"></i>
+                    {{ skill.download_count ?? 0 }}
+                  </span>
+                  <span
+                    class="market-stat"
+                    :class="{ 'market-stat--favorited': skill.is_favorited }"
+                    :title="skill.is_favorited ? '已收藏' : '收藏数'"
+                  >
+                    <i class="fa-solid fa-heart"></i>
+                    {{ skill.favorite_count ?? 0 }}
+                  </span>
+                </div>
                 <div class="market-card-footer">
                   <span class="author">
                     <i class="fa-regular fa-user"></i>
-                    {{ skill.owner_username || skill.id }}
+                    {{ marketOwnerLabel(skill) }}
                   </span>
                   <button
                     class="install-btn"
@@ -680,88 +978,18 @@ onMounted(async () => {
               </div>
             </div>
           </div>
-
-          <!-- Settings -->
-          <div v-else-if="currentTab === 'settings'" key="settings" class="settings-panel">
-            <div class="section-header">
-              <div>
-                <h2>连接设置</h2>
-                <p class="subtitle">配置 Skill Base 服务端地址与 CLI 登录（与 skb 共用 ~/.skill-base/config.json）。</p>
-              </div>
-            </div>
-
-            <div class="settings-card glass-panel">
-              <h3><i class="fa-solid fa-server"></i> Server Connection</h3>
-              <p class="settings-hint">
-                在浏览器打开登录页获取 CLI 验证码，在此换取 PAT；技能市场使用该配置拉取列表与安装。
-              </p>
-
-              <label class="field-label">Server 根地址</label>
-              <div class="field-row">
-                <input v-model="registryUrl" type="text" class="font-mono" />
-                <button class="btn-ghost" @click="saveServer">保存</button>
-              </div>
-
-              <a href="#" class="login-link" @click.prevent="openLoginPage">
-                <i class="fa-solid fa-arrow-up-right-from-square"></i>
-                在浏览器打开 CLI 登录页
-              </a>
-
-              <label class="field-label">8 位验证码</label>
-              <div class="field-row">
-                <input
-                  v-model="verificationCode"
-                  type="text"
-                  placeholder="如 AB12-CD34"
-                  class="font-mono"
-                />
-                <button
-                  class="btn-ghost"
-                  :disabled="isExchangingPat"
-                  @click="exchangePat"
-                >
-                  <i
-                    class="fa-solid"
-                    :class="isExchangingPat ? 'fa-circle-notch fa-spin' : 'fa-key'"
-                  ></i>
-                  换取 PAT
-                </button>
-              </div>
-              <p v-if="patReady" class="pat-status">
-                <span class="status-dot small"></span>
-                PAT 已就绪{{ config.username ? ` · ${config.username}` : '' }}
-              </p>
-
-              <div class="settings-actions">
-                <button
-                  class="btn-ghost"
-                  :disabled="isTestingConnection"
-                  @click="testConnection"
-                >
-                  <i v-if="isTestingConnection" class="fa-solid fa-circle-notch fa-spin"></i>
-                  验证连接
-                </button>
-                <button
-                  v-if="patReady"
-                  class="btn-ghost"
-                  @click="logout"
-                >
-                  退出登录
-                </button>
-              </div>
-            </div>
-          </div>
         </Transition>
       </div>
 
-      <!-- Toast -->
-      <Transition name="fade">
-        <div v-if="toastMessage" class="toast glass-panel">
-          <i class="fa-solid fa-terminal"></i>
-          <span>{{ toastMessage }}</span>
-        </div>
-      </Transition>
     </main>
+
+    <!-- Toast (above modal overlays) -->
+    <Transition name="fade">
+      <div v-if="toastMessage" class="toast glass-panel">
+        <i class="fa-solid fa-terminal"></i>
+        <span>{{ toastMessage }}</span>
+      </div>
+    </Transition>
 
     <!-- Install Modal -->
     <div v-if="installModalOpen" class="modal-overlay" @click.self="installModalOpen = false">
@@ -1023,6 +1251,33 @@ onMounted(async () => {
             </option>
           </select>
 
+          <div v-if="updateSelectedVersionDetail" class="version-detail">
+            <p class="version-detail-row">
+              <span class="version-detail-label">提交人</span>
+              <span class="version-detail-value font-mono">
+                @{{ versionUploaderLabel(updateSelectedVersionDetail) }}
+              </span>
+            </p>
+            <p class="version-detail-changelog">
+              {{ updateSelectedVersionDetail.changelog || '暂无 changelog' }}
+            </p>
+            <div class="version-detail-actions">
+              <button type="button" class="btn-ghost version-detail-btn" @click="openUpdateVersionOnline('detail')">
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                在线查看
+              </button>
+              <button
+                v-if="canOpenUpdateVersionDiff"
+                type="button"
+                class="btn-ghost version-detail-btn"
+                @click="openUpdateVersionOnline('diff')"
+              >
+                <i class="fa-solid fa-code-compare"></i>
+                对比当前安装版本
+              </button>
+            </div>
+          </div>
+
           <div v-if="updateInstallPaths.length > 1" style="margin-top: 1rem">
             <label class="field-label">选择要更新的目录</label>
             <label
@@ -1049,6 +1304,88 @@ onMounted(async () => {
       </div>
     </div>
 
+    <!-- Settings Modal -->
+    <div v-if="settingsModalOpen" class="modal-overlay" @click.self="settingsModalOpen = false">
+      <div class="modal-panel glass-panel settings-modal">
+        <div class="modal-header">
+          <h3>
+            <i class="fa-solid fa-sliders text-indigo"></i>
+            连接设置
+          </h3>
+          <button class="btn-icon" @click="settingsModalOpen = false">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <p class="settings-hint settings-intro">
+            配置 Skill Base 服务端地址与 CLI 登录（与 skb 共用 ~/.skill-base/config.json）。在浏览器打开登录页获取验证码，在此换取 PAT。
+          </p>
+
+          <h4 class="settings-section-title">
+            <i class="fa-solid fa-server"></i>
+            Server Connection
+          </h4>
+
+          <label class="field-label">Server 根地址</label>
+          <div class="field-row">
+            <input v-model="registryUrl" type="text" class="font-mono" />
+            <button class="btn-ghost" @click="saveServer">保存</button>
+          </div>
+
+          <a href="#" class="login-link" @click.prevent="openLoginPage">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            在浏览器打开 CLI 登录页
+          </a>
+
+          <label class="field-label">8 位验证码</label>
+          <div class="field-row">
+            <input
+              v-model="verificationCode"
+              type="text"
+              placeholder="如 AB12-CD34"
+              class="font-mono"
+            />
+            <button
+              class="btn-ghost"
+              :disabled="isExchangingPat"
+              @click="exchangePat"
+            >
+              <i
+                class="fa-solid"
+                :class="isExchangingPat ? 'fa-circle-notch fa-spin' : 'fa-key'"
+              ></i>
+              换取 PAT
+            </button>
+          </div>
+          <p v-if="patReady" class="pat-status">
+            <span class="status-dot small"></span>
+            PAT 已就绪{{ config.username ? ` · ${config.username}` : '' }}
+          </p>
+
+          <div class="settings-actions">
+            <button
+              class="btn-ghost"
+              :disabled="isTestingConnection"
+              @click="testConnection"
+            >
+              <i v-if="isTestingConnection" class="fa-solid fa-circle-notch fa-spin"></i>
+              验证连接
+            </button>
+            <button
+              v-if="patReady"
+              class="btn-ghost"
+              @click="logout"
+            >
+              退出登录
+            </button>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" @click="settingsModalOpen = false">关闭</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Paths Modal -->
     <div v-if="pathsModalOpen" class="modal-overlay" @click.self="pathsModalOpen = false">
       <div class="modal-panel glass-panel paths-modal">
@@ -1070,6 +1407,14 @@ onMounted(async () => {
               <i class="fa-solid fa-folder"></i>
               <code class="path-full font-mono">{{ inst.installPath }}</code>
               <span v-if="inst.version" class="path-version">v{{ inst.version }}</span>
+              <button
+                type="button"
+                class="btn-icon path-reveal-btn"
+                :title="revealPathHint"
+                @click="revealInstallPath(inst.installPath)"
+              >
+                <i class="fa-solid fa-arrow-up-right-from-square"></i>
+              </button>
             </li>
           </ul>
         </div>
@@ -1097,8 +1442,13 @@ onMounted(async () => {
 .app-layout .nav-btn,
 .app-layout .project-path,
 .app-layout .skill-card,
+.app-layout .market-card,
+.app-layout .content-toolbar,
+.app-layout .content-area,
+.app-layout .tag-filter-dropdown,
 .app-layout .modal-overlay,
-.app-layout .modal-panel {
+.app-layout .modal-panel,
+.app-layout .toast {
   -webkit-app-region: no-drag;
 }
 
@@ -1263,10 +1613,73 @@ onMounted(async () => {
   font-family: ui-monospace, monospace;
 }
 
-.top-bar-right {
+.content-toolbar {
+  margin: 2rem 2rem 0;
+  padding: 0;
+  padding-bottom: 1rem;
+  background: transparent;
+  border: none;
+}
+
+.toolbar-row {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.content-toolbar .search-box {
+  position: relative;
+  width: min(26rem, 100%);
+  flex-shrink: 0;
+}
+
+.content-toolbar--market .search-box {
+  width: min(22rem, 55vw);
+}
+
+.content-toolbar .search-box i {
+  position: absolute;
+  left: 0.875rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #64748b;
+  font-size: 0.75rem;
+  pointer-events: none;
+}
+
+.content-toolbar .search-box input {
+  width: 100%;
+  height: 2rem;
+  padding: 0 2rem 0 2.125rem;
+  font-size: 0.8125rem;
+  line-height: 2rem;
+  background: transparent;
+  border: 1px solid #334155;
+  border-radius: 1.25rem;
+  box-shadow: none;
+  color: #e2e8f0;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.content-toolbar .search-box input:hover {
+  border-color: #475569;
+}
+
+.content-toolbar .search-box input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+  outline: none;
+}
+
+.content-toolbar .search-box input::placeholder {
+  color: #64748b;
+}
+
+.content-toolbar .search-clear-btn {
+  right: 0.625rem;
 }
 
 .search-box {
@@ -1284,16 +1697,217 @@ onMounted(async () => {
 }
 
 .search-box input {
+  width: 100%;
   padding-left: 2.25rem;
+  padding-right: 2rem;
   padding-top: 0.375rem;
   padding-bottom: 0.375rem;
   font-size: 0.8125rem;
 }
 
+.search-clear-btn {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 0.25rem;
+  line-height: 1;
+  border-radius: 0.25rem;
+}
+
+.search-clear-btn:hover {
+  color: #94a3b8;
+  background: rgba(148, 163, 184, 0.1);
+}
+
+.market-filter-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.content-toolbar--market .filter-chip {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.75rem;
+}
+
+.content-toolbar--market .toolbar-refresh-btn {
+  padding: 0.25rem 0.5rem;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid #334155;
+  background: rgba(15, 23, 42, 0.5);
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.filter-chip:hover {
+  border-color: #475569;
+  color: #cbd5e1;
+}
+
+.filter-chip--active {
+  border-color: rgba(99, 102, 241, 0.5);
+  background: rgba(99, 102, 241, 0.12);
+  color: #a5b4fc;
+}
+
+.toolbar-refresh-btn {
+  padding: 0.35rem 0.6rem;
+}
+
+.tag-filter-dropdown {
+  position: relative;
+}
+
+.tag-filter-badge {
+  min-width: 1.125rem;
+  height: 1.125rem;
+  padding: 0 0.25rem;
+  border-radius: 9999px;
+  background: rgba(99, 102, 241, 0.25);
+  color: #a5b4fc;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.125rem;
+  text-align: center;
+}
+
+.tag-filter-chevron {
+  font-size: 0.625rem;
+  opacity: 0.75;
+  transition: transform 0.2s ease;
+}
+
+.tag-filter-dropdown--open .tag-filter-chevron {
+  transform: rotate(180deg);
+}
+
+.tag-filter-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  z-index: 50;
+  min-width: 14rem;
+  max-width: min(20rem, calc(100vw - 2rem));
+  max-height: 11rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.45rem 0.5rem 0.5rem;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 0.625rem;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.tag-filter-panel-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  margin-bottom: 0.35rem;
+}
+
+.tag-filter-hint {
+  margin: 0;
+  padding: 0.15rem 0.25rem 0 0;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.625rem;
+  color: #64748b;
+  line-height: 1.35;
+}
+
+.tag-filter-clear {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.25rem 0.4rem;
+  border-radius: 0.375rem;
+  border: 1px solid #334155;
+  background: transparent;
+  font-size: 0.625rem;
+  color: #64748b;
+  cursor: pointer;
+}
+
+.tag-filter-clear:hover {
+  border-color: #475569;
+  color: #94a3b8;
+}
+
+.tag-filter-options {
+  overflow-y: auto;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.tag-filter-option {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  border: none;
+  border-radius: 0.375rem;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 0.8125rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.tag-filter-option:hover {
+  background: rgba(148, 163, 184, 0.08);
+  color: #e2e8f0;
+}
+
+.tag-filter-option--active {
+  background: rgba(99, 102, 241, 0.1);
+  color: #a5b4fc;
+}
+
+.tag-filter-option-check {
+  flex-shrink: 0;
+  width: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #818cf8;
+}
+
+.tag-filter-option-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .content-area {
   flex: 1;
   overflow-y: auto;
-  padding: 2rem;
+  padding: 0 2rem 2rem;
+  container-type: inline-size;
+  container-name: skill-content;
 }
 
 .section-header {
@@ -1321,16 +1935,21 @@ onMounted(async () => {
   margin: 0.25rem 0 0;
 }
 
-.skill-grid-2 {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(420px, 1fr));
-  gap: 1rem;
-}
-
 .skill-grid-3 {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 1.25rem;
+}
+
+@container skill-content (min-width: 72rem) {
+  .skill-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.skill-card,
+.market-card {
+  min-width: 0;
 }
 
 .skill-card {
@@ -1424,13 +2043,18 @@ onMounted(async () => {
 
 .skill-dirs {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 0.375rem;
   padding-top: 0.75rem;
   border-top: 1px solid rgba(30, 41, 59, 0.6);
 }
 
 .dir-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
   padding: 0.25rem 0.5rem;
   background: rgba(30, 41, 59, 0.5);
   border: 1px solid #334155;
@@ -1438,19 +2062,30 @@ onMounted(async () => {
   font-size: 0.6875rem;
   font-family: ui-monospace, monospace;
   color: #94a3b8;
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  max-width: 100%;
-  min-width: 0;
+  width: fit-content;
+  max-width: min(100%, 22rem);
+}
+
+button.dir-tag {
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s, color 0.2s;
+}
+
+.dir-tag--reveal:hover {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.4);
+  color: #c7d2fe;
+}
+
+.dir-tag--reveal:hover i {
+  color: #a5b4fc;
 }
 
 .dir-tag-text {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  min-width: 0;
-  flex: 1;
+  max-width: 18rem;
 }
 
 .dir-tag-more {
@@ -1486,7 +2121,7 @@ onMounted(async () => {
   border: 1px solid #334155;
   display: flex;
   flex-direction: column;
-  height: 12rem;
+  min-height: 12.5rem;
   position: relative;
   overflow: hidden;
   transition: border-color 0.2s;
@@ -1524,6 +2159,48 @@ onMounted(async () => {
   font-weight: 700;
   color: #e2e8f0;
   margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.market-card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  flex-shrink: 0;
+}
+
+.market-detail-btn {
+  color: #64748b !important;
+}
+
+.market-detail-btn:hover {
+  color: #a5b4fc !important;
+  background: rgba(99, 102, 241, 0.12) !important;
+}
+
+.market-card-stats {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+  position: relative;
+}
+
+.market-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.6875rem;
+  color: #64748b;
+  font-family: ui-monospace, monospace;
+}
+
+.market-stat--favorited {
+  color: #f472b6;
 }
 
 .market-card-footer {
@@ -1538,6 +2215,63 @@ onMounted(async () => {
   font-size: 0.75rem;
   color: #64748b;
   font-family: ui-monospace, monospace;
+}
+
+.version-detail {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  border: 1px solid #334155;
+  background: rgba(15, 23, 42, 0.5);
+}
+
+.version-detail-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.5rem;
+  font-size: 0.8125rem;
+}
+
+.version-detail-label {
+  color: #64748b;
+  flex-shrink: 0;
+}
+
+.version-detail-value {
+  color: #94a3b8;
+}
+
+.version-detail-changelog {
+  margin: 0;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  color: #cbd5e1;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.version-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid #334155;
+}
+
+.version-detail-btn {
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  color: #a5b4fc;
+}
+
+.version-detail-btn:hover {
+  color: #c7d2fe;
+  border-color: #6366f1;
 }
 
 .install-btn {
@@ -1566,21 +2300,19 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-.settings-panel {
-  max-width: 48rem;
+.settings-modal {
+  width: min(32rem, 94vw);
 }
 
-.settings-card {
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-  border: 1px solid #334155;
+.settings-intro {
+  margin-top: 0;
 }
 
-.settings-card h3 {
+.settings-section-title {
   font-size: 0.875rem;
   font-weight: 700;
   color: #e2e8f0;
-  margin: 0 0 0.5rem;
+  margin: 0 0 1rem;
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -1588,7 +2320,7 @@ onMounted(async () => {
   letter-spacing: 0.05em;
 }
 
-.settings-card h3 i {
+.settings-section-title i {
   color: #818cf8;
 }
 
@@ -1659,7 +2391,7 @@ onMounted(async () => {
 }
 
 .toast {
-  position: absolute;
+  position: fixed;
   bottom: 1.5rem;
   right: 1.5rem;
   padding: 0.75rem 1.25rem;
@@ -1669,7 +2401,8 @@ onMounted(async () => {
   align-items: center;
   gap: 0.75rem;
   box-shadow: 0 0 20px rgba(99, 102, 241, 0.2);
-  z-index: 40;
+  z-index: 60;
+  pointer-events: none;
 }
 
 .toast i {
@@ -1955,6 +2688,17 @@ code {
   border-radius: 0.5rem;
   margin-bottom: 0.5rem;
   background: rgba(15, 23, 42, 0.5);
+}
+
+.path-reveal-btn {
+  flex-shrink: 0;
+  margin-left: auto;
+  align-self: center;
+  color: #94a3b8;
+}
+
+.path-reveal-btn:hover {
+  color: #a5b4fc;
 }
 
 .paths-list li i {

@@ -10,6 +10,7 @@ const channels = [
   'project:setRoot',
   'project:pickRoot',
   'project:pickInstallDir',
+  'shell:revealPath',
   'auth:openLogin',
   'auth:exchangePat',
   'auth:whoami',
@@ -19,7 +20,8 @@ const channels = [
   'skills:getRemote',
   'skills:getInstalled',
   'skills:install',
-  'skills:update'
+  'skills:update',
+  'skills:openWebPage'
 ];
 
 contextBridge.exposeInMainWorld('skb', {

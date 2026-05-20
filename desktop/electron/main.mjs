@@ -50,40 +50,28 @@ function saveProjectRoot(root) {
   projectRoot = root;
 }
 
-function readLocalSkillMeta(installPath) {
+/** @type {Promise<typeof import('../../cli/lib/skill-md.js')> | null} */
+let skillMdParserPromise = null;
+
+function loadSkillMdParser() {
+  if (!skillMdParserPromise) {
+    const entry = path.join(getCliLibRoot(), 'skill-md.js');
+    skillMdParserPromise = import(pathToFileURL(entry).href);
+  }
+  return skillMdParserPromise;
+}
+
+async function readLocalSkillMeta(installPath) {
   const skillMd = path.join(installPath, 'SKILL.md');
+  const fallbackName = path.basename(installPath);
   if (!fs.existsSync(skillMd)) {
-    return { name: path.basename(installPath), description: '' };
+    return { name: fallbackName, description: '' };
   }
   const content = fs.readFileSync(skillMd, 'utf-8');
-  const fmMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-  if (fmMatch) {
-    const nameMatch = fmMatch[1].match(/^name:\s*(.+)$/m);
-    const descMatch = fmMatch[1].match(/^description:\s*(.+)$/m);
-    if (nameMatch || descMatch) {
-      return {
-        name: nameMatch ? nameMatch[1].trim().replace(/^['"]|['"]$/g, '') : path.basename(installPath),
-        description: descMatch ? descMatch[1].trim().replace(/^['"]|['"]$/g, '') : ''
-      };
-    }
-  }
-  const titleMatch = content.match(/^#\s+(.+)$/m);
-  const lines = content.split('\n');
-  let description = '';
-  if (titleMatch) {
-    const titleIdx = lines.findIndex((l) => l.startsWith('# '));
-    for (let i = titleIdx + 1; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line && !line.startsWith('#')) {
-        description = line;
-        break;
-      }
-    }
-  }
-  return {
-    name: titleMatch ? titleMatch[1].trim() : path.basename(installPath),
-    description
-  };
+  const { parseSkillMd, displayNameAndDescriptionFromParsed } = await loadSkillMdParser();
+  const parsed = parseSkillMd(content);
+  const { name, description } = displayNameAndDescriptionFromParsed(parsed, fallbackName);
+  return { name: name || fallbackName, description: description || '' };
 }
 
 function targetPathExists(targetPath) {
@@ -260,9 +248,55 @@ function registerIpc() {
     return result.filePaths[0];
   });
 
+  ipcMain.handle('shell:revealPath', async (_e, rawPath) => {
+    const trimmed = String(rawPath || '').trim();
+    if (!trimmed) throw new Error('路径不能为空');
+
+    const expanded = trimmed.startsWith('~')
+      ? path.join(os.homedir(), trimmed.slice(1).replace(/^[/\\]/, ''))
+      : trimmed;
+    const resolved = path.resolve(expanded);
+
+    if (!fs.existsSync(resolved)) throw new Error('路径不存在');
+
+    const err = await shell.openPath(resolved);
+    if (err) throw new Error(err);
+    return { ok: true };
+  });
+
   ipcMain.handle('auth:openLogin', async () => {
     const { baseUrl } = cli.getConfig();
     await shell.openExternal(`${baseUrl}/login?from=cli`);
+  });
+
+  ipcMain.handle('skills:openWebPage', async (_e, payload) => {
+    const { baseUrl } = cli.getConfig();
+    const base = String(baseUrl || '').replace(/\/+$/, '');
+    if (!base) throw new Error('未配置服务器地址');
+
+    const skillId = String(payload?.skillId || '').trim();
+    if (!skillId) throw new Error('skillId required');
+
+    let url;
+    if (payload?.page === 'diff') {
+      const versionA = String(payload.version_a || '').trim();
+      const versionB = String(payload.version_b || '').trim();
+      if (!versionA || !versionB) throw new Error('缺少对比版本');
+      const q = new URLSearchParams({
+        id: skillId,
+        version_a: versionA,
+        version_b: versionB
+      });
+      url = `${base}/diff?${q.toString()}`;
+    } else {
+      const version = String(payload?.version || '').trim();
+      url = version
+        ? `${base}/skills/${encodeURIComponent(skillId)}?version=${encodeURIComponent(version)}`
+        : `${base}/skills/${encodeURIComponent(skillId)}`;
+    }
+
+    await shell.openExternal(url);
+    return { url };
   });
 
   ipcMain.handle('auth:exchangePat', async (_e, code) => {
@@ -332,7 +366,9 @@ function registerIpc() {
         // offline or skill removed from server
       }
       const firstPath = row.installs[0]?.installPath;
-      const meta = firstPath ? readLocalSkillMeta(firstPath) : { name: row.skillId, description: '' };
+      const meta = firstPath
+        ? await readLocalSkillMeta(firstPath)
+        : { name: row.skillId, description: '' };
       enriched.push({
         skillId: row.skillId,
         name: meta.name,
