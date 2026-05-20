@@ -9,8 +9,20 @@
     <link rel="manifest" href="./site.webmanifest">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Skill Base</title>
-    <script type="module" crossorigin src="./assets/index-Bl71T62g.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CAo9-YKP.css">
+    <script>
+      (function () {
+        try {
+          var k = 'skill-base-theme'
+          var v = localStorage.getItem(k)
+          var p = v === 'light' || v === 'dark' || v === 'system' ? v : 'dark'
+          var dark = p === 'dark' || (p === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light'
+          document.documentElement.style.colorScheme = dark ? 'dark' : 'light'
+        } catch (e) {}
+      })()
+    </script>
+    <script type="module" crossorigin src="./assets/index-CBCsmlrz.js"></script>
+    <link rel="stylesheet" crossorigin href="./assets/index-BMu9y8Vo.css">
   </head>
   <body>
     <div id="app"></div>
