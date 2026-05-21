@@ -226,42 +226,48 @@ jobs:
           echo "NOTARIZATION_ENV=$NOTARIZATION_ENV" >> "$GITHUB_ENV"
           echo "Configured notarization method: $(grep '^NOTARIZATION_METHOD=' "$NOTARIZATION_ENV")"
 
-      - name: Build Tauri installers (signed macOS)
-        if: runner.os != 'macOS' || steps.signing.outputs.available == 'true'
+      - name: Build Tauri installers (Windows/Linux)
+        if: runner.os != 'macOS'
         env:
           SKB_NODE_TARGET: ${{ matrix.node_target }}
           CI: true
-          # Windows: keep unsigned unless you add WIN certificate secrets later
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ matrix.os == 'windows-latest' && 'false' || '' }}
+        run: pnpm exec tauri build --bundles ${{ matrix.tauri_bundles }}
+
+      - name: Build Tauri installers (signed macOS)
+        if: runner.os == 'macOS' && steps.signing.outputs.available == 'true'
+        shell: bash
+        env:
+          SKB_NODE_TARGET: ${{ matrix.node_target }}
+          CI: true
         run: |
           set -euo pipefail
-          if [ "${{ runner.os }}" = "macOS" ]; then
-            # Drop any empty/leaked notarization vars — Tauri treats "" as set and picks Apple ID first.
-            unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH || true
-            if [ -f "${NOTARIZATION_ENV:-}" ]; then
-              set -a
-              # shellcheck disable=SC1090
-              source "$NOTARIZATION_ENV"
-              set +a
-            fi
-            case "${NOTARIZATION_METHOD:-none}" in
-              api-key)
-                unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
-                echo "Notarization enabled: API Key"
-                ;;
-              apple-id)
-                unset APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH
-                echo "Notarization enabled: Apple ID"
-                ;;
-              *)
-                echo "Notarization disabled for this build"
-                ;;
-            esac
+          # Drop any empty/leaked notarization vars — Tauri treats "" as set and picks Apple ID first.
+          unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH || true
+          if [ -f "${NOTARIZATION_ENV:-}" ]; then
+            set -a
+            # shellcheck disable=SC1090
+            source "$NOTARIZATION_ENV"
+            set +a
           fi
+          case "${NOTARIZATION_METHOD:-none}" in
+            api-key)
+              unset APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID
+              echo "Notarization enabled: API Key"
+              ;;
+            apple-id)
+              unset APPLE_API_ISSUER APPLE_API_KEY APPLE_API_KEY_PATH
+              echo "Notarization enabled: Apple ID"
+              ;;
+            *)
+              echo "Notarization disabled for this build"
+              ;;
+          esac
           pnpm exec tauri build --bundles ${{ matrix.tauri_bundles }}
 
       - name: Build Tauri installers (unsigned macOS)
         if: runner.os == 'macOS' && steps.signing.outputs.available != 'true'
+        shell: bash
         env:
           SKB_NODE_TARGET: ${{ matrix.node_target }}
           CI: true
