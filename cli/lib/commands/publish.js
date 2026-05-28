@@ -8,7 +8,7 @@ import archiver from 'archiver';
 import { loadCredentials } from '../auth.js';
 import { createClient } from '../api.js';
 import { pickMessage } from '../i18n.js';
-import { resolveSkillIdCore, parseSkillMd } from '../skill-md.js';
+import { resolveSkillIdCore, parseSkillMd, displayNameAndDescriptionFromParsed } from '../skill-md.js';
 
 export function resolveSkillId(folderBasename, frontmatterName) {
   const r = resolveSkillIdCore(folderBasename, frontmatterName);
@@ -101,12 +101,10 @@ export default async function publish(directory, options) {
     process.exit(1);
   }
 
-  const name = options.name || parsed.headingTitle || skillId;
-  const description =
-    options.description ||
-    (parsed.descriptionFromFm ? parsed.descriptionFromFm : '') ||
-    parsed.headingDescription ||
-    '';
+  const { name: parsedName, description: parsedDescription } =
+    displayNameAndDescriptionFromParsed(parsed, skillId);
+  const name = options.name || parsedName;
+  const description = options.description || parsedDescription;
   const changelog = options.changelog;
 
   const noneLabel = pickMessage({ zh: '（无）', en: '(none)' });

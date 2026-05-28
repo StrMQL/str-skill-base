@@ -69,8 +69,7 @@ skb ui --host 0.0.0.0
 
 | 目录 | 说明 |
 |------|------|
-| `desktop-tauri/` | **推荐**。Tauri 2 + bundled Node bridge |
-| `desktop/` | Electron（legacy，维护模式） |
+| `desktop-tauri/` | Tauri 2 + bundled Node bridge；UI 在 `src/` |
 
 ```bash
 cd desktop-tauri && pnpm install && pnpm dev
@@ -307,7 +306,7 @@ Skill Base 发布的是一个包含 `SKILL.md` 的目录。
 
 如果你写了 frontmatter，CLI 和服务端会优先使用它；如果没写，则按下面的退化规则解析：
 
-- `name`：取第一个 `#` 标题
+- `name`：优先取 frontmatter 的 `name`；未写时取第一个 `#` 标题
 - `description`：取标题后的第一段非空文本；若以 `>` 开头的多行引用块书写，会合并为一段
 - frontmatter 中 `description: >-` / `description: |` 等多行 YAML 块会按 YAML 规则解析（`>-` 换行折叠为空格）
 

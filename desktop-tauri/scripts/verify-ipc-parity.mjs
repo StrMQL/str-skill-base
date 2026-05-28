@@ -10,8 +10,8 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const root = path.join(__dirname, '..');
 
 const libRs = fs.readFileSync(path.join(root, 'src-tauri/src/lib.rs'), 'utf8');
-const appVue = fs.readFileSync(path.join(root, '../desktop/src/App.vue'), 'utf8');
-const preload = fs.readFileSync(path.join(root, '../desktop/electron/preload.mjs'), 'utf8');
+const appVue = fs.readFileSync(path.join(root, 'src/App.vue'), 'utf8');
+const skbJs = fs.readFileSync(path.join(root, 'src/skb.js'), 'utf8');
 
 const RUST_NATIVE = [
   'project:pickRoot',
@@ -40,10 +40,8 @@ if (DESKTOP_IPC_CHANNELS.length !== 21) {
   fail(`expected 21 channels, got ${DESKTOP_IPC_CHANNELS.length}`);
 }
 
-for (const ch of DESKTOP_IPC_CHANNELS) {
-  if (!preload.includes(`'${ch}'`) && !preload.includes(`"${ch}"`)) {
-    fail(`preload missing channel: ${ch}`);
-  }
+if (!skbJs.includes('DESKTOP_IPC_CHANNELS')) {
+  fail('skb.js must validate channels via DESKTOP_IPC_CHANNELS');
 }
 
 for (const ch of RUST_NATIVE) {
