@@ -1282,6 +1282,140 @@ section {
   line-height: 1.5;
 }
 
+.hero-desktop-meta {
+  margin-top: 12px;
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.desktop-download-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.desktop-download-lead {
+  color: var(--text-secondary);
+  line-height: 1.7;
+  margin-bottom: 20px;
+}
+
+.desktop-download-lead code {
+  font-family: var(--font-mono);
+  font-size: 0.85em;
+  color: var(--accent-green);
+}
+
+.desktop-download-primary {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.desktop-download-main {
+  text-decoration: none;
+}
+
+.desktop-download-loading,
+.desktop-download-version {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+.desktop-download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.desktop-download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 16px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-terminal);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.desktop-download-card:hover,
+.desktop-download-card:focus {
+  border-color: var(--accent-green);
+  transform: translateY(-1px);
+}
+
+.desktop-download-card.is-recommended {
+  border-color: rgba(0, 255, 136, 0.35);
+}
+
+.desktop-download-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.desktop-download-card-title {
+  font-family: var(--font-heading);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.desktop-download-badge {
+  font-size: 0.7rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--accent-green);
+  border: 1px solid rgba(0, 255, 136, 0.35);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.desktop-download-card-file {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+}
+
+.desktop-download-card-size {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.desktop-download-note {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.desktop-download-note a {
+  color: var(--accent-green);
+}
+
+.desktop-download-all {
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  color: var(--accent-green);
+  text-decoration: none;
+}
+
+.desktop-download-all:hover,
+.desktop-download-all:focus {
+  text-decoration: underline;
+}
+
 /* ===== Quick Start Section ===== */
 .quick-start {
   background: var(--bg-secondary);

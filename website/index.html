@@ -45,6 +45,7 @@
   <title>Skill Base</title>
   <link rel="stylesheet" href="css/index.css">
   <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="js/desktop-download.js" defer></script>
 </head>
 <body>
     <div class="landing-page" id="top">
@@ -134,6 +135,14 @@
               <span class="i18n-en">Stop copy-pasting prompts and context every time. Give Cursor, Claude, and ChatGPT your team jargon, templates, and standards—zero extra stack, one command on your intranet.</span>
             </p>
             <div class="hero-cta fade-in">
+              <a href="https://github.com/ginuim/skill-base/releases/tag/desktop-latest" class="btn btn-primary" id="hero-desktop-download" hidden>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                  <polyline points="7 10 12 15 17 10"/>
+                  <line x1="12" y1="15" x2="12" y2="3"/>
+                </svg>
+                <span data-desktop-label></span>
+              </a>
               <button class="btn copy-btn" id="hero-copy-btn">
                 <svg class="copy-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
@@ -145,6 +154,7 @@
                 <span class="i18n-zh">阅读系列文章</span><span class="i18n-en">Read the series</span>
               </a>
             </div>
+            <p class="hero-desktop-meta fade-in" id="hero-desktop-meta" hidden></p>
           </div>
 
           <div class="hero-terminal fade-in">
@@ -574,6 +584,12 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
             <p><span class="i18n-zh">每次发布自动生成版本号，支持版本回溯和对比</span><span class="i18n-en">Every publish gets a version—diff and roll back when needed</span></p>
           </div>
 
+          <div class="feature-card fade-in">
+            <span class="feature-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></svg></span>
+            <h3><span class="i18n-zh">桌面客户端</span><span class="i18n-en">Desktop app</span></h3>
+            <p><span class="i18n-zh">Tauri 原生客户端，浏览、安装、发布 Skill，无需记命令</span><span class="i18n-en">Native Tauri app to browse, install, and publish Skills—no terminal required</span></p>
+          </div>
+
         </div>
       </div>
     </section>
@@ -646,6 +662,7 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
             <button class="tab" data-tab="tab-search"><span class="i18n-zh">搜索安装</span><span class="i18n-en">Search &amp; install</span></button>
             <button class="tab" data-tab="tab-publish"><span class="i18n-zh">发布 Skill</span><span class="i18n-en">Publish</span></button>
             <button class="tab" data-tab="tab-ide"><span class="i18n-zh">IDE 集成</span><span class="i18n-en">IDE</span></button>
+            <button class="tab" data-tab="tab-desktop"><span class="i18n-zh">桌面客户端</span><span class="i18n-en">Desktop</span></button>
           </div>
 
           <div id="tab-server" class="tab-content active">
@@ -821,6 +838,26 @@ EOF</span>
 <span class="keyword">skb</span> <span class="command">publish</span>
 
 <span class="output">✓ Published my-team-skill@v20240320.150000</span></span></div>
+            </div>
+          </div>
+
+          <div id="tab-desktop" class="tab-content">
+            <div class="desktop-download-panel">
+              <p class="desktop-download-lead">
+                <span class="i18n-zh">Skill Base Desktop 是 Tauri 桌面客户端，适合不想敲命令、又需要完整 Skill 管理能力的同学。安装包由 GitHub Actions 自动构建，始终指向最新 <code>desktop-latest</code> 发布。</span>
+                <span class="i18n-en">Skill Base Desktop is a Tauri app for full Skill management without the terminal. Installers are built by GitHub Actions and always track the latest <code>desktop-latest</code> release.</span>
+              </p>
+              <div class="desktop-download-primary" id="desktop-download-primary">
+                <span class="desktop-download-loading"><span class="i18n-zh">正在获取最新安装包…</span><span class="i18n-en">Loading latest installers…</span></span>
+              </div>
+              <div class="desktop-download-grid" id="desktop-download-grid"></div>
+              <p class="desktop-download-note">
+                <span class="i18n-zh">macOS 未签名 DMG 可能被系统拦截，见仓库 <a href="https://github.com/ginuim/skill-base/blob/main/docs/desktop-macos-signing.md" target="_blank" rel="noopener noreferrer">docs/desktop-macos-signing.md</a>。Windows 可能触发 SmartScreen。</span>
+                <span class="i18n-en">Unsigned macOS DMGs may be blocked by Gatekeeper—see <a href="https://github.com/ginuim/skill-base/blob/main/docs/desktop-macos-signing.md" target="_blank" rel="noopener noreferrer">docs/desktop-macos-signing.md</a>. Windows may show SmartScreen.</span>
+              </p>
+              <a href="https://github.com/ginuim/skill-base/releases/tag/desktop-latest" target="_blank" rel="noopener noreferrer" class="desktop-download-all">
+                <span class="i18n-zh">查看全部 Release →</span><span class="i18n-en">All releases →</span>
+              </a>
             </div>
           </div>
 
@@ -1216,6 +1253,9 @@ EOF</span>
           if (typeof window.refreshOpenClawWizardAria === 'function') {
             window.refreshOpenClawWizardAria();
           }
+          if (typeof window.refreshDesktopDownloadLabels === 'function') {
+            window.refreshDesktopDownloadLabels();
+          }
         });
       });
     }
@@ -1602,6 +1642,9 @@ EOF</span>
       initCopyButtons();
       initOpenClawWizard();
       initMobileNav();
+      if (typeof window.initDesktopDownload === 'function') {
+        window.initDesktopDownload();
+      }
     });
   </script>
   <script async src="https://www.googletagmanager.com/gtag/js?id=G-YZ36TK558L"></script>
