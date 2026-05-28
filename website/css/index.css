@@ -873,6 +873,12 @@ section {
 .openclaw-wizard-arrow:hover:not(:disabled) {
   border-color: var(--primary);
   color: var(--primary);
+  background: var(--canvas-soft);
+}
+
+.openclaw-wizard-arrow:focus-visible:not(:disabled) {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
 }
 
 .openclaw-wizard-arrow:disabled {
@@ -969,20 +975,20 @@ section {
 }
 
 .openclaw-step-nav-item.is-active .openclaw-step-nav-num {
-  background-color: var(--accent-green);
-  border-color: var(--accent-green);
-  color: white;
-  box-shadow: 0 0 0 4px rgba(0, 255, 136, 0.22);
+  background-color: var(--primary);
+  border-color: var(--primary);
+  color: var(--on-primary);
+  box-shadow: 0 0 0 4px var(--accent-green-dim);
 }
 
 .openclaw-step-nav-item.is-active .openclaw-step-nav-label {
-  color: var(--accent-green);
+  color: var(--primary);
   font-weight: 700;
 }
 
 .openclaw-step-nav-item.is-completed .openclaw-step-nav-num {
-  border-color: var(--accent-green);
-  color: var(--accent-green);
+  border-color: var(--primary);
+  color: var(--primary);
 }
 
 /* 内容区 */
@@ -1146,6 +1152,41 @@ section {
   border-radius: 4px;
 }
 
+html[data-theme="dark"] .openclaw-wizard-arrow:hover:not(:disabled) {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--surface-pressed);
+}
+
+html[data-theme="dark"] .openclaw-wizard-arrow:focus-visible:not(:disabled) {
+  outline-color: var(--ink);
+}
+
+html[data-theme="dark"] .openclaw-step-nav-item.is-active .openclaw-step-nav-num {
+  background-color: var(--ink);
+  border-color: var(--ink);
+  color: var(--canvas);
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.14);
+}
+
+html[data-theme="dark"] .openclaw-step-nav-item.is-active .openclaw-step-nav-label {
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .openclaw-step-nav-item.is-completed:not(:last-child)::after {
+  background-color: var(--ink);
+}
+
+html[data-theme="dark"] .openclaw-step-nav-item.is-completed .openclaw-step-nav-num {
+  border-color: var(--ink);
+  color: var(--ink);
+}
+
+html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-step-nav-num {
+  border-color: var(--hairline-mid);
+  background-color: var(--surface-pressed);
+}
+
 /* ===== What is Agent Skill Section ===== */
 .what-is-skill {
   background: var(--bg-secondary);
@@ -1219,22 +1260,6 @@ section {
   width: 16px;
   height: 16px;
   flex-shrink: 0;
-}
-
-.comparison-code .inline-icon {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  vertical-align: -2px;
-  margin-right: 2px;
-}
-
-.comparison-code .inline-icon-bad {
-  color: #f85149;
-}
-
-.comparison-code .inline-icon-good {
-  color: #3fb950;
 }
 
 .comparison-arrow {

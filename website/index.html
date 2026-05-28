@@ -207,7 +207,6 @@
 <pre><code><span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
 <span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> token = jwt.<span class="function">sign</span>({ id }, <span class="string">'secret'</span>);
-  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 缺少统一鉴权和审计</span>
   <span class="keyword">return</span> res.<span class="function">json</span>({ token });
 }</code></pre>
                 </div>
@@ -222,7 +221,6 @@
 <pre><code><span class="keyword">import</span> { auth } <span class="keyword">from</span> <span class="string">'@core/auth'</span>;
 <span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> user = <span class="keyword">await</span> auth.<span class="function">login</span>(req.body);
-  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 走公司鉴权和审计</span>
   <span class="keyword">return</span> <span class="function">SuccessResponse</span>(user);
 }</code></pre>
                 </div>
@@ -238,7 +236,6 @@
 <pre><code><span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
 <span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> token = jwt.<span class="function">sign</span>({ id }, <span class="string">'secret'</span>);
-  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Misses auth and audit rules</span>
   <span class="keyword">return</span> res.<span class="function">json</span>({ token });
 }</code></pre>
                 </div>
@@ -253,7 +250,6 @@
 <pre><code><span class="keyword">import</span> { auth } <span class="keyword">from</span> <span class="string">'@core/auth'</span>;
 <span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> user = <span class="keyword">await</span> auth.<span class="function">login</span>(req.body);
-  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Follows auth and audit rules</span>
   <span class="keyword">return</span> <span class="function">SuccessResponse</span>(user);
 }</code></pre>
                 </div>
@@ -273,8 +269,7 @@
 <pre><span class="output">目标：提升活跃
 流程：点击、扣分、中奖
 页面：一个抽奖按钮
-缺少：埋点、异常、规则
-（<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 内容空泛，不能落地）</span></pre>
+缺少：埋点、异常、规则</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -287,8 +282,7 @@
 <pre><span class="output">目标：V3+ 用户促活
 流程：点击、扣分、开奖
 异常：并发锁 + 余额校验
-埋点：btn_lottery_click
-（<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 套用 PRD 模板和规则）</span></pre>
+埋点：btn_lottery_click</span></pre>
                 </div>
               </div>
             </div>
@@ -302,8 +296,7 @@
 <pre><span class="output">Goal: boost engagement
 Flow: tap, deduct, win
 Page: one lottery button
-Missing: analytics, rules
-(<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Too vague to build)</span></pre>
+Missing: analytics, rules</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -316,8 +309,7 @@ Missing: analytics, rules
 <pre><span class="output">Goal: activate V3+ users
 Flow: tap, deduct, draw
 Edge: lock + balance check
-Event: btn_lottery_click
-(<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Uses PRD and tracking rules)</span></pre>
+Event: btn_lottery_click</span></pre>
                 </div>
               </div>
             </div>
@@ -336,7 +328,6 @@ Event: btn_lottery_click
 test(<span class="string">'add to cart'</span>, <span class="keyword">async</span> () => {
   <span class="keyword">const</span> res = <span class="keyword">await</span> axios.post(<span class="string">'http://api/cart'</span>);
   expect(res.status).toBe(200);
-  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 框架和账号都猜错</span>
 });</code></pre>
                 </div>
               </div>
@@ -352,7 +343,6 @@ apiTest(<span class="string">'购物车-正常添加'</span>, <span class="keywo
   <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>);
   <span class="keyword">const</span> res = <span class="keyword">await</span> request.post(<span class="string">'/gw/api/v2/cart'</span>);
   expect(res).toHaveCode(<span class="string">'SUCCESS'</span>);
-  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 使用公司测试网关</span>
 });</code></pre>
                 </div>
               </div>
@@ -368,7 +358,6 @@ apiTest(<span class="string">'购物车-正常添加'</span>, <span class="keywo
 test(<span class="string">'add to cart'</span>, <span class="keyword">async</span> () => {
   <span class="keyword">const</span> res = <span class="keyword">await</span> axios.post(<span class="string">'http://api/cart'</span>);
   expect(res.status).toBe(200);
-  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Wrong stack and account</span>
 });</code></pre>
                 </div>
               </div>
@@ -384,7 +373,6 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
   <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>);
   <span class="keyword">const</span> res = <span class="keyword">await</span> request.post(<span class="string">'/gw/api/v2/cart'</span>);
   expect(res).toHaveCode(<span class="string">'SUCCESS'</span>);
-  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Uses test gateway</span>
 });</code></pre>
                 </div>
               </div>
@@ -403,8 +391,7 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
 <pre><span class="output">本周：开会、写接口、修 bug
 进展：首页接口 60%
 风险：UI 走查延迟
-下周：继续推进项目
-（<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 像流水账，没结论）</span></pre>
+下周：继续推进项目</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -417,8 +404,7 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
 <pre><span class="output">OKR：首页改版 KR2 60%
 产出：接口完成，修 3 个 P2
 价值：预计客诉下降 5%
-风险：UI 走查需协调
-（<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 结构清楚，能决策）</span></pre>
+风险：UI 走查需协调</span></pre>
                 </div>
               </div>
             </div>
@@ -432,8 +418,7 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
 <pre><span class="output">This week: meetings, APIs, bugs
 Progress: homepage APIs 60%
 Risk: UI review slipped
-Next: keep moving
-(<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Status dump, no point)</span></pre>
+Next: keep moving</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -446,8 +431,7 @@ Next: keep moving
 <pre><span class="output">OKR: homepage KR2 at 60%
 Output: APIs done, 3 P2 fixed
 Value: ~5% fewer tickets
-Risk: UI review needs help
-(<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Clear enough to act on)</span></pre>
+Risk: UI review needs help</span></pre>
                 </div>
               </div>
             </div>
