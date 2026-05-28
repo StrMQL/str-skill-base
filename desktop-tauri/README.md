@@ -1,6 +1,6 @@
 # Skill Base Desktop (Tauri)
 
-与 `../desktop`（Electron）并行，共用 `../desktop/src` Vue UI 与 `../cli/lib` 业务逻辑。
+Vue UI 位于 `src/`，业务逻辑复用 `../cli/lib`（Node bridge）。
 
 ## 开发
 
@@ -66,14 +66,6 @@ SKB_NODE_TARGET=darwin-arm64 pnpm prepare:resources   # darwin-arm64 | darwin-x6
 | `SKB_SKIP_BUNDLE` | `1` = 不 esbuild，复制源码 bridge + 安装 cli-lib prod deps（需手动在 `tauri.conf.json` 添加 `resources/cli-lib/**` glob） |
 | `SKB_CLI_LIB_ROOT` | Bridge 运行时 cli/lib 路径（Rust 在 fallback 模式自动注入） |
 
-## Electron（对照）
-
-```bash
-cd ../desktop
-pnpm install
-pnpm dev
-```
-
 ## 架构
 
 见 [IPC.md](./IPC.md)。
@@ -86,7 +78,7 @@ pnpm dev
 
 ## 验收
 
-完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（21 IPC channel、手动 UI 场景、与 Electron 对照）。
+完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（21 IPC channel、手动 UI 场景）。
 
 发布前建议：
 

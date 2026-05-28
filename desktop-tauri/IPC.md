@@ -1,7 +1,7 @@
 # Desktop IPC Channels (21)
 
 Skill Base Desktop 前端通过 `window.skb.invoke(channel, ...args)` 调用后端。
-Electron 走 `ipcMain.handle`；Tauri 走 Rust `skb_invoke` → Node bridge HTTP。
+前端通过 `window.skb.invoke(channel, ...args)` 调用后端；Tauri 走 Rust `skb_invoke` → Node bridge HTTP。
 
 ## Channels
 

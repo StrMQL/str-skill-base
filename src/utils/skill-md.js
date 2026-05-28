@@ -189,7 +189,11 @@ function parseSkillMd(content) {
 }
 
 function displayNameAndDescriptionFromParsed(parsed, fallbackId) {
-  const name = parsed.headingTitle || fallbackId;
+  const nameFromFm =
+    parsed.fm?.name !== undefined && parsed.fm?.name !== null
+      ? String(parsed.fm.name).trim()
+      : '';
+  const name = nameFromFm || parsed.headingTitle || fallbackId;
   const description =
     (parsed.descriptionFromFm ? parsed.descriptionFromFm : '') ||
     parsed.headingDescription ||

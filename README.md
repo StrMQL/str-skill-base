@@ -349,10 +349,9 @@ Prefer a native app over the browser or terminal? The desktop client connects to
 
 **Download (CI builds from `main`):** [GitHub Releases → desktop-latest](https://github.com/ginuim/skill-base/releases/tag/desktop-latest) — macOS `.dmg`, Windows `.exe` (NSIS), Linux `.AppImage` / `.deb`. End users do not need Node.js installed.
 
-| Directory | Stack | Status | Build |
-|-----------|-------|--------|-------|
-| `desktop-tauri/` | Tauri 2 + bundled Node 20 bridge | **Recommended** | `pnpm install && pnpm build` |
-| `desktop/` | Electron | Legacy (maintenance) | `pnpm install && pnpm run dist` |
+| Directory | Stack | Build |
+|-----------|-------|-------|
+| `desktop-tauri/` | Tauri 2 + bundled Node 20 bridge | `pnpm install && pnpm build` |
 
 **Skill Market** — search team skills, favorites, and install from the grid (same server as the web UI).
 
@@ -368,7 +367,7 @@ Prefer a native app over the browser or terminal? The desktop client connects to
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base desktop — Install to agents" width="720" />
 </p>
 
-CI: [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml) builds Tauri on every push to `main` and updates the `desktop-latest` release. See [desktop-tauri/README.md](desktop-tauri/README.md) for dev/build/troubleshooting and [desktop-tauri/ACCEPTANCE.md](desktop-tauri/ACCEPTANCE.md) for the 21-channel parity checklist. Electron deprecation notes: [desktop/DEPRECATED.md](desktop/DEPRECATED.md).
+CI: [`.github/workflows/desktop-release.yml`](.github/workflows/desktop-release.yml) builds Tauri on every push to `main` and updates the `desktop-latest` release. See [desktop-tauri/README.md](desktop-tauri/README.md) for dev/build/troubleshooting and [desktop-tauri/ACCEPTANCE.md](desktop-tauri/ACCEPTANCE.md) for the 21-channel parity checklist.
 
 ## Deployment and backup
 

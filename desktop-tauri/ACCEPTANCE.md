@@ -1,6 +1,6 @@
 # Desktop Tauri — Acceptance Checklist
 
-Tauri 桌面客户端与 Electron 共用 `desktop/src` UI 与 `cli/lib/desktop-handlers.mjs`。共 **21** 个 IPC channel（见 [IPC.md](./IPC.md)）。
+Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.mjs`。共 **21** 个 IPC channel（见 [IPC.md](./IPC.md)）。
 
 ## 自动化
 
@@ -39,7 +39,7 @@ cd src-tauri && cargo check    # Rust 编译检查
 
 ## Rust 原生通道（需手动 UI 点击）
 
-在 `pnpm dev` 或 release 包中逐项验证，行为应对齐 Electron。
+在 `pnpm dev` 或 release 包中逐项验证。
 
 | Channel | 手动步骤 | 预期 |
 |---------|----------|------|
@@ -86,15 +86,15 @@ cd src-tauri && cargo check    # Rust 编译检查
 - [ ] Bridge 使用 bundled Node + `resources/bridge/server.mjs`
 - [ ] macOS / Windows / Linux 各平台至少 smoke 一次（CI 矩阵或本地）
 
-## 与 Electron 对照
+## 运行时对照
 
-| 项 | Electron | Tauri |
-|----|----------|-------|
-| 业务逻辑 | `cli/lib/desktop-handlers.mjs` | 同左（Node bridge） |
-| 原生对话框 | Electron `dialog` | Tauri dialog plugin |
-| 打开浏览器 | `shell.openExternal` | opener plugin |
-| Reveal 路径 | `shell.openPath` | `reveal_item_in_dir` |
-| Node 运行时 | Electron 内置 | Release 打包 portable Node 20 |
+| 项 | 实现 |
+|----|------|
+| 业务逻辑 | `cli/lib/desktop-handlers.mjs`（Node bridge） |
+| 原生对话框 | Tauri dialog plugin |
+| 打开浏览器 | opener plugin |
+| Reveal 路径 | `reveal_item_in_dir` |
+| Node 运行时 | Release 打包 portable Node 20 |
 
 ## 已知限制
 

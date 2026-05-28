@@ -336,10 +336,9 @@ description: "Internal Vue3 admin best practices. Triggers on requests to create
 
 **下载（`main` 分支 CI 构建）：** [GitHub Releases → desktop-latest](https://github.com/ginuim/skill-base/releases/tag/desktop-latest) — macOS `.dmg`、Windows `.exe`（NSIS）、Linux `.AppImage` / `.deb`。终端用户无需单独安装 Node.js。
 
-| 目录 | 技术栈 | 状态 | 构建 |
-|------|--------|------|------|
-| `desktop-tauri/` | Tauri 2 + 内置 Node 20 bridge | **推荐** | `pnpm install && pnpm build` |
-| `desktop/` | Electron | 遗留（维护模式） | `pnpm install && pnpm run dist` |
+| 目录 | 技术栈 | 构建 |
+|------|--------|------|
+| `desktop-tauri/` | Tauri 2 + 内置 Node 20 bridge | `pnpm install && pnpm build` |
 
 **技能市场** — 与 Web 端同一套目录：搜索、收藏、从卡片安装。
 
@@ -355,7 +354,7 @@ description: "Internal Vue3 admin best practices. Triggers on requests to create
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base 桌面端 — 安装到 Agent" width="720" />
 </p>
 
-CI：[`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml) 在每次推送到 `main` 时构建 Tauri 并更新 `desktop-latest` 发布。开发与排障见 [desktop-tauri/README.md](../desktop-tauri/README.md)，21 通道 IPC 验收见 [desktop-tauri/ACCEPTANCE.md](../desktop-tauri/ACCEPTANCE.md)。Electron 弃用说明：[desktop/DEPRECATED.md](../desktop/DEPRECATED.md)。
+CI：[`.github/workflows/desktop-release.yml`](../.github/workflows/desktop-release.yml) 在每次推送到 `main` 时构建 Tauri 并更新 `desktop-latest` 发布。开发与排障见 [desktop-tauri/README.md](../desktop-tauri/README.md)，21 通道 IPC 验收见 [desktop-tauri/ACCEPTANCE.md](../desktop-tauri/ACCEPTANCE.md)。
 
 ## 部署与备份
 
