@@ -1215,6 +1215,28 @@ section {
 .comparison-code .string { color: #a5d6ff; }
 .comparison-code .function { color: #d2a8ff; }
 
+.tab-icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.comparison-code .inline-icon {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  vertical-align: -2px;
+  margin-right: 2px;
+}
+
+.comparison-code .inline-icon-bad {
+  color: #f85149;
+}
+
+.comparison-code .inline-icon-good {
+  color: #3fb950;
+}
+
 .comparison-arrow {
   display: flex;
   align-items: center;

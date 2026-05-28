@@ -189,10 +189,10 @@
 
         <div class="scenario-section fade-in">
           <div class="tabs scenario-tabs category-tabs" role="tablist">
-            <button type="button" class="tab category-button active" role="tab" aria-selected="true" data-scenario="scenario-dev"><span class="i18n-zh">👩‍💻 研发编码</span><span class="i18n-en">👩‍💻 Engineering</span></button>
-            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-pm"><span class="i18n-zh">👩‍💼 产品需求</span><span class="i18n-en">👩‍💼 Product</span></button>
-            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-qa"><span class="i18n-zh">🕵️ 测试用例</span><span class="i18n-en">🕵️ QA</span></button>
-            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-daily"><span class="i18n-zh">☕️ 日常办公</span><span class="i18n-en">☕️ Office</span></button>
+            <button type="button" class="tab category-button active" role="tab" aria-selected="true" data-scenario="scenario-dev"><i data-lucide="code-2" class="tab-icon" aria-hidden="true"></i><span class="i18n-zh">研发编码</span><span class="i18n-en">Engineering</span></button>
+            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-pm"><i data-lucide="briefcase" class="tab-icon" aria-hidden="true"></i><span class="i18n-zh">产品需求</span><span class="i18n-en">Product</span></button>
+            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-qa"><i data-lucide="clipboard-check" class="tab-icon" aria-hidden="true"></i><span class="i18n-zh">测试用例</span><span class="i18n-en">QA</span></button>
+            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-scenario="scenario-daily"><i data-lucide="coffee" class="tab-icon" aria-hidden="true"></i><span class="i18n-zh">日常办公</span><span class="i18n-en">Office</span></button>
           </div>
 
           <!-- 研发场景 -->
@@ -204,10 +204,10 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"帮我写个用户登录接口"</div>
-<pre><code><span class="comment">// ❌ 不懂公司统一鉴权与 Redis 封装</span>
-<span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
-<span class="keyword">export</span> <span class="keyword">const</span> <span class="function">login</span> = <span class="keyword">async</span> (req, res) => {
+<pre><code><span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> token = jwt.<span class="function">sign</span>({ id }, <span class="string">'secret'</span>);
+  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 缺少统一鉴权和审计</span>
   <span class="keyword">return</span> res.<span class="function">json</span>({ token });
 }</code></pre>
                 </div>
@@ -219,12 +219,10 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"帮我写个用户登录接口"</div>
-<pre><code><span class="comment">// ✅ 自动引入内部 SSO 组件与合规日志</span>
-<span class="keyword">import</span> { ssoClient } <span class="keyword">from</span> <span class="string">'@company/sso'</span>;
-<span class="keyword">import</span> { auditLogger } <span class="keyword">from</span> <span class="string">'@core/logger'</span>;
-<span class="keyword">export</span> <span class="keyword">const</span> <span class="function">login</span> = <span class="keyword">async</span> (req, res) => {
-  <span class="keyword">const</span> user = <span class="keyword">await</span> ssoClient.<span class="function">verify</span>(req.body);
-  auditLogger.<span class="function">info</span>(<span class="string">'USER_LOGIN'</span>, user.id);
+<pre><code><span class="keyword">import</span> { auth } <span class="keyword">from</span> <span class="string">'@core/auth'</span>;
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
+  <span class="keyword">const</span> user = <span class="keyword">await</span> auth.<span class="function">login</span>(req.body);
+  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 走公司鉴权和审计</span>
   <span class="keyword">return</span> <span class="function">SuccessResponse</span>(user);
 }</code></pre>
                 </div>
@@ -237,10 +235,10 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write a user login API for me"</div>
-<pre><code><span class="comment">// ❌ No idea about your SSO stack or Redis helpers</span>
-<span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
-<span class="keyword">export</span> <span class="keyword">const</span> <span class="function">login</span> = <span class="keyword">async</span> (req, res) => {
+<pre><code><span class="keyword">import</span> jwt <span class="keyword">from</span> <span class="string">'jsonwebtoken'</span>;
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
   <span class="keyword">const</span> token = jwt.<span class="function">sign</span>({ id }, <span class="string">'secret'</span>);
+  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Misses auth and audit rules</span>
   <span class="keyword">return</span> res.<span class="function">json</span>({ token });
 }</code></pre>
                 </div>
@@ -252,12 +250,10 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write a user login API for me"</div>
-<pre><code><span class="comment">// ✅ Pulls in internal SSO + audit logging automatically</span>
-<span class="keyword">import</span> { ssoClient } <span class="keyword">from</span> <span class="string">'@company/sso'</span>;
-<span class="keyword">import</span> { auditLogger } <span class="keyword">from</span> <span class="string">'@core/logger'</span>;
-<span class="keyword">export</span> <span class="keyword">const</span> <span class="function">login</span> = <span class="keyword">async</span> (req, res) => {
-  <span class="keyword">const</span> user = <span class="keyword">await</span> ssoClient.<span class="function">verify</span>(req.body);
-  auditLogger.<span class="function">info</span>(<span class="string">'USER_LOGIN'</span>, user.id);
+<pre><code><span class="keyword">import</span> { auth } <span class="keyword">from</span> <span class="string">'@core/auth'</span>;
+<span class="keyword">export</span> <span class="keyword">async</span> <span class="keyword">function</span> <span class="function">login</span>(req, res) {
+  <span class="keyword">const</span> user = <span class="keyword">await</span> auth.<span class="function">login</span>(req.body);
+  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Follows auth and audit rules</span>
   <span class="keyword">return</span> <span class="function">SuccessResponse</span>(user);
 }</code></pre>
                 </div>
@@ -274,13 +270,11 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"写一个积分抽奖的 PRD"</div>
-<pre><span class="output">一、背景
-这是一个为了提升活跃度的活动。
-二、功能描述
-1. 用户点击抽奖按钮。
-2. 扣除积分。
-3. 获得奖品。
-（❌ 缺乏埋点要求、异常流、UI规范）</span></pre>
+<pre><span class="output">目标：提升活跃
+流程：点击、扣分、中奖
+页面：一个抽奖按钮
+缺少：埋点、异常、规则
+（<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 内容空泛，不能落地）</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -290,14 +284,11 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"写一个积分抽奖的 PRD"</div>
-<pre><span class="output">【需求编号】ACT-2024
-【目标受众】V3及以上高价值用户（基于业务词典）
-【异常流程】
-- 并发防资损：调用 @Promo/Lock 接口拦截
-【数据埋点要求】
-- 事件名：btn_lottery_click
-- 携带参数：user_id, source_type
-（✅ 自动套用公司 PRD 模板与埋点规范）</span></pre>
+<pre><span class="output">目标：V3+ 用户促活
+流程：点击、扣分、开奖
+异常：并发锁 + 余额校验
+埋点：btn_lottery_click
+（<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 套用 PRD 模板和规则）</span></pre>
                 </div>
               </div>
             </div>
@@ -308,13 +299,11 @@
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write a PRD for a points lottery"</div>
-<pre><span class="output">1. Background
-An activity to boost engagement.
-2. Features
-1) User taps lottery.
-2) Deduct points.
-3) Win a prize.
-(❌ Missing analytics, edge cases, UI rules)</span></pre>
+<pre><span class="output">Goal: boost engagement
+Flow: tap, deduct, win
+Page: one lottery button
+Missing: analytics, rules
+(<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Too vague to build)</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -324,14 +313,11 @@ An activity to boost engagement.
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write a PRD for a points lottery"</div>
-<pre><span class="output">[ID] ACT-2024
-[Audience] V3+ high-value users (from business glossary)
-[Edge cases]
-- Concurrency: call @Promo/Lock to prevent losses
-[Analytics]
-- Event: btn_lottery_click
-- Params: user_id, source_type
-(✅ Uses your PRD template + tracking rules)</span></pre>
+<pre><span class="output">Goal: activate V3+ users
+Flow: tap, deduct, draw
+Edge: lock + balance check
+Event: btn_lottery_click
+(<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Uses PRD and tracking rules)</span></pre>
                 </div>
               </div>
             </div>
@@ -346,11 +332,11 @@ An activity to boost engagement.
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"为购物车接口写测试脚本"</div>
-<pre><code><span class="comment">// ❌ 使用了公司没在用的测试框架，且不知道测试账号</span>
-<span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;
+<pre><code><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;
 test(<span class="string">'add to cart'</span>, <span class="keyword">async</span> () => {
   <span class="keyword">const</span> res = <span class="keyword">await</span> axios.post(<span class="string">'http://api/cart'</span>);
   expect(res.status).toBe(200);
+  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 框架和账号都猜错</span>
 });</code></pre>
                 </div>
               </div>
@@ -361,12 +347,12 @@ test(<span class="string">'add to cart'</span>, <span class="keyword">async</spa
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"为购物车接口写测试脚本"</div>
-<pre><code><span class="comment">// ✅ 自动使用公司的 Playwright 封装与测试网关</span>
-<span class="keyword">import</span> { apiTest, getMockUser } <span class="keyword">from</span> <span class="string">'@qa/core'</span>;
+<pre><code><span class="keyword">import</span> { apiTest, getMockUser } <span class="keyword">from</span> <span class="string">'@qa/core'</span>;
 apiTest(<span class="string">'购物车-正常添加'</span>, <span class="keyword">async</span> ({ request }) => {
-  <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>); <span class="comment">// 自动获取环境数据</span>
+  <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>);
   <span class="keyword">const</span> res = <span class="keyword">await</span> request.post(<span class="string">'/gw/api/v2/cart'</span>);
   expect(res).toHaveCode(<span class="string">'SUCCESS'</span>);
+  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 使用公司测试网关</span>
 });</code></pre>
                 </div>
               </div>
@@ -378,11 +364,11 @@ apiTest(<span class="string">'购物车-正常添加'</span>, <span class="keywo
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write tests for the cart API"</div>
-<pre><code><span class="comment">// ❌ Wrong framework; no idea about test accounts</span>
-<span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;
+<pre><code><span class="keyword">import</span> axios <span class="keyword">from</span> <span class="string">'axios'</span>;
 test(<span class="string">'add to cart'</span>, <span class="keyword">async</span> () => {
   <span class="keyword">const</span> res = <span class="keyword">await</span> axios.post(<span class="string">'http://api/cart'</span>);
   expect(res.status).toBe(200);
+  <span class="comment">// <i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Wrong stack and account</span>
 });</code></pre>
                 </div>
               </div>
@@ -393,12 +379,12 @@ test(<span class="string">'add to cart'</span>, <span class="keyword">async</spa
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Write tests for the cart API"</div>
-<pre><code><span class="comment">// ✅ Uses your Playwright helpers and test gateway</span>
-<span class="keyword">import</span> { apiTest, getMockUser } <span class="keyword">from</span> <span class="string">'@qa/core'</span>;
+<pre><code><span class="keyword">import</span> { apiTest, getMockUser } <span class="keyword">from</span> <span class="string">'@qa/core'</span>;
 apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword">async</span> ({ request }) => {
-  <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>); <span class="comment">// env-aware fixtures</span>
+  <span class="keyword">const</span> user = <span class="keyword">await</span> getMockUser(<span class="string">'VIP'</span>);
   <span class="keyword">const</span> res = <span class="keyword">await</span> request.post(<span class="string">'/gw/api/v2/cart'</span>);
   expect(res).toHaveCode(<span class="string">'SUCCESS'</span>);
+  <span class="comment">// <i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Uses test gateway</span>
 });</code></pre>
                 </div>
               </div>
@@ -414,11 +400,11 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"根据这几天的记录帮我写个周报"</div>
-<pre><span class="output">本周工作总结：
-1. 周一开了个会，讨论了首页改版。
-2. 周二写了接口。
-3. 周三修复了几个bug。
-4. 下周计划继续做项目。</span></pre>
+<pre><span class="output">本周：开会、写接口、修 bug
+进展：首页接口 60%
+风险：UI 走查延迟
+下周：继续推进项目
+（<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> 像流水账，没结论）</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -428,15 +414,11 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"根据这几天的记录帮我写个周报"</div>
-<pre><span class="output">🎯 【OKR 对齐进展】
-- 首页改版（O1-KR2）：完成核心接口，进度 60%，符合预期。
-
-🔥 【核心产出与价值】
-- 修复支付链路 3 个 P2 缺陷，预计降低客诉率 5%。
-
-🚧 【风险与求助】
-- UI 走查延迟，可能影响下周三的发版，需协调资源。
-（✅ 自动套用团队 OKR 汇报模板与结构）</span></pre>
+<pre><span class="output">OKR：首页改版 KR2 60%
+产出：接口完成，修 3 个 P2
+价值：预计客诉下降 5%
+风险：UI 走查需协调
+（<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> 结构清楚，能决策）</span></pre>
                 </div>
               </div>
             </div>
@@ -447,11 +429,11 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Turn my notes into a weekly update"</div>
-<pre><span class="output">This week:
-1. Monday: meeting about the homepage.
-2. Tuesday: wrote APIs.
-3. Wednesday: fixed bugs.
-4. Next week: keep going.</span></pre>
+<pre><span class="output">This week: meetings, APIs, bugs
+Progress: homepage APIs 60%
+Risk: UI review slipped
+Next: keep moving
+(<i data-lucide="circle-x" class="inline-icon inline-icon-bad" aria-hidden="true"></i> Status dump, no point)</span></pre>
                 </div>
               </div>
               <div class="comparison-arrow">→</div>
@@ -461,15 +443,11 @@ apiTest(<span class="string">'cart — happy path'</span>, <span class="keyword"
                 </div>
                 <div class="comparison-code">
                   <div class="chat-prompt">"Turn my notes into a weekly update"</div>
-<pre><span class="output">🎯 OKR alignment
-- Homepage redesign (O1-KR2): core APIs done, ~60% on track.
-
-🔥 Outcomes
-- Fixed 3 P2 issues in payments; ~5% fewer support tickets expected.
-
-🚧 Risks / asks
-- UI review slipped; may hit Wed release—need help.
-(✅ Uses your OKR update template)</span></pre>
+<pre><span class="output">OKR: homepage KR2 at 60%
+Output: APIs done, 3 P2 fixed
+Value: ~5% fewer tickets
+Risk: UI review needs help
+(<i data-lucide="circle-check" class="inline-icon inline-icon-good" aria-hidden="true"></i> Clear enough to act on)</span></pre>
                 </div>
               </div>
             </div>
