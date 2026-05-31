@@ -73,8 +73,12 @@ fn runtime_node_binary(app: &AppHandle, source: &Path) -> Result<PathBuf, String
         .app_cache_dir()
         .unwrap_or_else(|_| std::env::temp_dir().join("skill-base-desktop-cache"))
         .join("runtime-node");
-    std::fs::create_dir_all(&cache_dir)
-        .map_err(|e| format!("failed to create runtime Node dir {}: {e}", cache_dir.display()))?;
+    std::fs::create_dir_all(&cache_dir).map_err(|e| {
+        format!(
+            "failed to create runtime Node dir {}: {e}",
+            cache_dir.display()
+        )
+    })?;
 
     let runtime_node = cache_dir.join(format!("node-{size}.exe"));
     if !is_real_node_binary(&runtime_node) {
@@ -109,7 +113,10 @@ fn resolve_bridge_paths(app: &AppHandle, log_path: &Path) -> Result<BridgePaths,
     let mut last_err = String::from("bridge resources not found");
     append_desktop_log(
         log_path,
-        &format!("resolving bridge resources resource_dir={}", resource_dir.display()),
+        &format!(
+            "resolving bridge resources resource_dir={}",
+            resource_dir.display()
+        ),
     );
 
     for base in &bases {
@@ -275,6 +282,13 @@ fn format_invalid_bridge_response_error(
     )
 }
 
+fn bridge_http_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .no_proxy()
+        .build()
+        .map_err(|e| format!("failed to create bridge HTTP client: {e}"))
+}
+
 async fn bridge_call(
     state: &AppState,
     channel: &str,
@@ -284,7 +298,7 @@ async fn bridge_call(
         .bridge_port
         .ok_or_else(|| bridge_unavailable_message(state))?;
 
-    let client = reqwest::Client::new();
+    let client = bridge_http_client()?;
     let url = format!("http://127.0.0.1:{port}/invoke");
     let resp = client
         .post(url)
@@ -300,20 +314,16 @@ async fn bridge_call(
         })?;
 
     let status = resp.status().as_u16();
-    let text = resp
-        .text()
-        .await
-        .map_err(|e| {
-            append_desktop_log(
-                &state.log_path,
-                &format!("failed to read bridge response channel={channel} status={status}: {e}"),
-            );
-            format!("failed to read bridge response: {e}")
-        })?;
+    let text = resp.text().await.map_err(|e| {
+        append_desktop_log(
+            &state.log_path,
+            &format!("failed to read bridge response channel={channel} status={status}: {e}"),
+        );
+        format!("failed to read bridge response: {e}")
+    })?;
 
     let body: BridgeResponse = serde_json::from_str(&text).map_err(|e| {
-        let detail =
-            format_invalid_bridge_response_error(channel, status, &text, &e.to_string());
+        let detail = format_invalid_bridge_response_error(channel, status, &text, &e.to_string());
         append_desktop_log(
             &state.log_path,
             &format!("invalid bridge response {detail}"),
@@ -534,6 +544,10 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    use std::sync::mpsc;
+    use std::time::Duration;
 
     #[test]
     fn invalid_bridge_response_error_includes_status_and_body_snippet() {
@@ -557,5 +571,80 @@ mod tests {
 
         assert!(snippet.ends_with("..."));
         assert!(snippet.chars().count() <= 503);
+    }
+
+    fn spawn_one_shot_http_server(response: &'static str) -> (u16, mpsc::Receiver<()>) {
+        let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let (tx, rx) = mpsc::channel();
+
+        std::thread::spawn(move || {
+            if let Ok((mut stream, _)) = listener.accept() {
+                let _ = tx.send(());
+                let mut buffer = [0_u8; 1024];
+                let _ = stream.read(&mut buffer);
+                let _ = stream.write_all(response.as_bytes());
+            }
+        });
+
+        (port, rx)
+    }
+
+    #[tokio::test]
+    async fn bridge_call_does_not_send_loopback_ipc_through_http_proxy() {
+        let target_response = concat!(
+            "HTTP/1.1 200 OK\r\n",
+            "Content-Type: application/json\r\n",
+            "Connection: close\r\n",
+            "\r\n",
+            "{\"ok\":true,\"result\":\"local\"}"
+        );
+        let proxy_response = concat!(
+            "HTTP/1.1 504 Gateway Timeout\r\n",
+            "Content-Type: text/html\r\n",
+            "Connection: close\r\n",
+            "\r\n",
+            "<html>proxy</html>"
+        );
+        let (target_port, target_hit) = spawn_one_shot_http_server(target_response);
+        let (proxy_port, proxy_hit) = spawn_one_shot_http_server(proxy_response);
+
+        let old_http_proxy = std::env::var_os("HTTP_PROXY");
+        let old_http_proxy_lower = std::env::var_os("http_proxy");
+        let old_no_proxy = std::env::var_os("NO_PROXY");
+        let old_no_proxy_lower = std::env::var_os("no_proxy");
+
+        std::env::set_var("HTTP_PROXY", format!("http://127.0.0.1:{proxy_port}"));
+        std::env::set_var("http_proxy", format!("http://127.0.0.1:{proxy_port}"));
+        std::env::remove_var("NO_PROXY");
+        std::env::remove_var("no_proxy");
+
+        let state = AppState {
+            bridge_port: Some(target_port),
+            bridge_error: None,
+            bridge_child: Mutex::new(None),
+            log_path: std::env::temp_dir().join("skill-base-bridge-proxy-test.log"),
+        };
+
+        let result = bridge_call(&state, "config:get", vec![]).await;
+
+        restore_env_var("HTTP_PROXY", old_http_proxy);
+        restore_env_var("http_proxy", old_http_proxy_lower);
+        restore_env_var("NO_PROXY", old_no_proxy);
+        restore_env_var("no_proxy", old_no_proxy_lower);
+
+        assert_eq!(
+            result.unwrap(),
+            serde_json::Value::String("local".to_string())
+        );
+        assert!(target_hit.recv_timeout(Duration::from_secs(1)).is_ok());
+        assert!(proxy_hit.recv_timeout(Duration::from_millis(100)).is_err());
+    }
+
+    fn restore_env_var(key: &str, value: Option<std::ffi::OsString>) {
+        match value {
+            Some(value) => std::env::set_var(key, value),
+            None => std::env::remove_var(key),
+        }
     }
 }
