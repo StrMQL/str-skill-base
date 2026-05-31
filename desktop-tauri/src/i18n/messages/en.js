@@ -58,6 +58,15 @@ export default {
     notMounted: 'Not mounted',
     revealHint: 'Reveal in Finder / file manager'
   },
+  version: {
+    latest: ' (latest)',
+    details: 'Version details',
+    uploader: 'Uploader',
+    changelog: 'Changelog',
+    noChangelog: 'No changelog',
+    loading: 'Loading versions…',
+    pick: 'Select version'
+  },
   install: {
     title: 'Install / {name}',
     version: 'Version',
