@@ -1,4 +1,5 @@
-use std::io::{BufRead, BufReader};
+use std::fs::OpenOptions;
+use std::io::{BufRead, BufReader, Write};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
@@ -9,10 +10,14 @@ use tauri_plugin_dialog::DialogExt;
 use tauri_plugin_opener::OpenerExt;
 use tokio::sync::oneshot;
 
+#[cfg(windows)]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
+
 struct AppState {
     bridge_port: Option<u16>,
     bridge_error: Option<String>,
     bridge_child: Mutex<Option<std::process::Child>>,
+    log_path: PathBuf,
 }
 
 #[derive(Deserialize)]
@@ -104,7 +109,30 @@ fn resolve_bridge_paths(app: &AppHandle) -> Result<BridgePaths, String> {
     Err(last_err)
 }
 
-fn spawn_bridge(paths: &BridgePaths) -> Result<(u16, std::process::Child), String> {
+fn desktop_log_path(app: &AppHandle) -> PathBuf {
+    app.path()
+        .app_log_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("skill-base-desktop"))
+        .join("desktop.log")
+}
+
+fn append_desktop_log(log_path: &Path, message: &str) {
+    if let Some(parent) = log_path.parent() {
+        let _ = std::fs::create_dir_all(parent);
+    }
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(log_path) {
+        let ts = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs())
+            .unwrap_or(0);
+        let _ = writeln!(file, "[{ts}] {message}");
+    }
+}
+
+fn spawn_bridge(
+    paths: &BridgePaths,
+    log_path: &Path,
+) -> Result<(u16, std::process::Child), String> {
     if !paths.script.exists() {
         return Err(format!(
             "bridge script not found: {}",
@@ -112,15 +140,41 @@ fn spawn_bridge(paths: &BridgePaths) -> Result<(u16, std::process::Child), Strin
         ));
     }
 
+    if let Some(parent) = log_path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| format!("failed to create log dir {}: {e}", parent.display()))?;
+    }
+    let stderr_log = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(log_path)
+        .map_err(|e| format!("failed to open log {}: {e}", log_path.display()))?;
+
     let mut cmd = Command::new(&paths.node);
     cmd.arg(&paths.script)
         .env("SKB_BRIDGE_NO_OPEN", "1")
+        .env("SKB_DESKTOP_LOG", log_path)
         .stdout(Stdio::piped())
-        .stderr(Stdio::inherit());
+        .stderr(Stdio::from(stderr_log));
+
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
 
     if let Some(cli_lib) = &paths.cli_lib {
         cmd.env("SKB_CLI_LIB_ROOT", cli_lib);
     }
+
+    append_desktop_log(
+        log_path,
+        &format!(
+            "starting bridge node={} script={}",
+            paths.node.display(),
+            paths.script.display()
+        ),
+    );
 
     let mut child = cmd
         .spawn()
@@ -142,6 +196,7 @@ fn spawn_bridge(paths: &BridgePaths) -> Result<(u16, std::process::Child), Strin
         .parse()
         .map_err(|e| format!("invalid bridge port '{port_str}': {e}"))?;
 
+    append_desktop_log(log_path, &format!("bridge ready port={port}"));
     Ok((port, child))
 }
 
@@ -175,17 +230,34 @@ async fn bridge_call(
         .json(&serde_json::json!({ "channel": channel, "args": args }))
         .send()
         .await
-        .map_err(|e| format!("bridge request failed: {e}"))?;
+        .map_err(|e| {
+            append_desktop_log(
+                &state.log_path,
+                &format!("bridge request failed channel={channel}: {e}"),
+            );
+            format!("bridge request failed: {e}")
+        })?;
 
     let body: BridgeResponse = resp
         .json()
         .await
-        .map_err(|e| format!("invalid bridge response: {e}"))?;
+        .map_err(|e| {
+            append_desktop_log(
+                &state.log_path,
+                &format!("invalid bridge response channel={channel}: {e}"),
+            );
+            format!("invalid bridge response: {e}")
+        })?;
 
     if body.ok {
         Ok(body.result.unwrap_or(serde_json::Value::Null))
     } else {
-        Err(body.error.unwrap_or_else(|| "bridge error".to_string()))
+        let error = body.error.unwrap_or_else(|| "bridge error".to_string());
+        append_desktop_log(
+            &state.log_path,
+            &format!("bridge handler failed channel={channel}: {error}"),
+        );
+        Err(error)
     }
 }
 
@@ -343,8 +415,10 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .setup(|app| {
+            let log_path = desktop_log_path(app.handle());
+            append_desktop_log(&log_path, "desktop starting");
             let state = match resolve_bridge_paths(app.handle()).and_then(|paths| {
-                spawn_bridge(&paths).map(|(port, child)| (port, child))
+                spawn_bridge(&paths, &log_path).map(|(port, child)| (port, child))
             }) {
                 Ok((port, child)) => {
                     eprintln!("bridge ready on port {port}");
@@ -352,14 +426,17 @@ pub fn run() {
                         bridge_port: Some(port),
                         bridge_error: None,
                         bridge_child: Mutex::new(Some(child)),
+                        log_path,
                     }
                 }
                 Err(e) => {
                     eprintln!("bridge failed to start: {e}");
+                    append_desktop_log(&log_path, &format!("bridge failed to start: {e}"));
                     AppState {
                         bridge_port: None,
                         bridge_error: Some(e),
                         bridge_child: Mutex::new(None),
+                        log_path,
                     }
                 }
             };

@@ -109,6 +109,7 @@ export default {
     connection: 'Connection',
     serverUrl: 'Server base URL',
     save: 'Save',
+    saving: 'Saving...',
     openLogin: 'Open CLI login page in browser',
     verificationCode: '8-character code',
     codePlaceholder: 'e.g. AB12-CD34',

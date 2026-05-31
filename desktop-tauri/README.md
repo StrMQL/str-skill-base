@@ -100,6 +100,8 @@ cd src-tauri && cargo check
 | `bridge exited before ready` | 确认 `../cli` 已 `pnpm install`；检查 `node bridge/server.mjs`  stderr |
 | `bundled Node not found` | 先 `pnpm prepare:resources` 或完整 `pnpm build` |
 | `bridge script not found` | Release 需 `src-tauri/resources/bridge/server.mjs`；dev 用 `bridge/server.mjs` |
+| Windows 打开后出现 `node.exe` CMD 窗口 | Rust 启动 bridge 时应带 `CREATE_NO_WINDOW`；重新构建安装包后验证 |
+| Windows 打包版无错误信息 | 查看 Tauri app log 目录下的 `desktop.log`（Windows 通常在 `%LOCALAPPDATA%\\com.reaidea.skillbase\\logs\\desktop.log`） |
 | IPC 调用无响应 | DevTools 看 `skb_invoke` 错误；确认 bridge 子进程已输出 `BRIDGE_READY` |
 | 对话框/打开浏览器无效 | 5 个原生 channel 由 Rust 处理，见 [IPC.md](./IPC.md) |
 | 搜索/安装失败 | 检查 `config:get.baseUrl` 与 Skill Base 服务是否可达 |

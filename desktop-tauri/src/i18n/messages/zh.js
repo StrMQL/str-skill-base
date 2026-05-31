@@ -108,6 +108,7 @@ export default {
     connection: '连接',
     serverUrl: 'Server 根地址',
     save: '保存',
+    saving: '保存中...',
     openLogin: '在浏览器打开 CLI 登录页',
     verificationCode: '8 位验证码',
     codePlaceholder: '如 AB12-CD34',

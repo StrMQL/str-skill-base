@@ -37,6 +37,7 @@ const settingsTab = ref('general');
 const registryUrl = ref('');
 const verificationCode = ref('');
 const patReady = ref(false);
+const isSavingServer = ref(false);
 const isExchangingPat = ref(false);
 const isTestingConnection = ref(false);
 
@@ -525,12 +526,15 @@ async function updateAll() {
 }
 
 async function saveServer() {
+  isSavingServer.value = true;
   try {
     await window.skb.invoke('config:setServer', registryUrl.value);
     await loadConfig();
     showToast(t('toast.serverSaved'));
   } catch (e) {
-    showToast(t('toast.saveFailed', { message: e.message }));
+    showToast(t('toast.saveFailed', { message: errMessage(e) }));
+  } finally {
+    isSavingServer.value = false;
   }
 }
 
@@ -1401,7 +1405,10 @@ onUnmounted(() => {
             <label class="field-label">{{ t('settings.serverUrl') }}</label>
             <div class="field-row">
               <input v-model="registryUrl" type="text" class="font-mono" />
-              <button class="btn-ghost" @click="saveServer">{{ t('settings.save') }}</button>
+              <button class="btn-ghost" :disabled="isSavingServer" @click="saveServer">
+                <i v-if="isSavingServer" class="fa-solid fa-circle-notch fa-spin"></i>
+                {{ isSavingServer ? t('settings.saving') : t('settings.save') }}
+              </button>
             </div>
 
             <a href="#" class="login-link" @click.prevent="openLoginPage">
