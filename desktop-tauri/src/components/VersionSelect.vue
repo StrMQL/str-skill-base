@@ -20,6 +20,12 @@ const selected = computed(
   () => props.versions.find((v) => v.version === props.modelValue) || null
 );
 
+const changelogOneLine = computed(() => {
+  const raw = selected.value?.changelog?.trim();
+  if (!raw) return t('version.noChangelog');
+  return raw.replace(/\s+/g, ' ');
+});
+
 const triggerLabel = computed(() => {
   if (props.loading) return t('version.loading');
   if (!props.modelValue) return t('version.pick');
@@ -100,11 +106,23 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerD
         :aria-expanded="metaExpanded"
         @click="metaExpanded = !metaExpanded"
       >
-        <span class="version-meta-toggle-summary">
+        <span
+          class="version-meta-toggle-summary"
+          :class="{ 'version-meta-toggle-summary--expanded': metaExpanded }"
+        >
           <template v-if="!metaExpanded">
-            <span class="version-meta-toggle-label">{{ t('version.uploader') }}</span>
-            <span class="version-meta-toggle-value font-mono">@{{ uploaderLabel(selected) }}</span>
-            <span class="version-meta-toggle-hint">· {{ t('version.changelog') }}</span>
+            <span class="version-meta-toggle-prefix">
+              <span class="version-meta-toggle-label">{{ t('version.uploader') }}</span>
+              <span class="version-meta-toggle-value font-mono">@{{ uploaderLabel(selected) }}</span>
+              <span class="version-meta-toggle-sep">·</span>
+            </span>
+            <span
+              class="version-meta-toggle-changelog-preview"
+              :class="{ 'version-meta-toggle-changelog-preview--empty': !selected.changelog?.trim() }"
+              :title="changelogOneLine"
+            >
+              {{ changelogOneLine }}
+            </span>
           </template>
           <span v-else class="version-meta-toggle-expanded">{{ t('version.details') }}</span>
         </span>
@@ -287,10 +305,21 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerD
 
 .version-meta-toggle-summary {
   min-width: 0;
+  flex: 1;
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.version-meta-toggle-summary:not(.version-meta-toggle-summary--expanded) {
+  flex-wrap: nowrap;
+}
+
+.version-meta-toggle-prefix {
+  display: inline-flex;
   align-items: baseline;
   gap: 0.25rem 0.35rem;
+  flex-shrink: 0;
 }
 
 .version-meta-toggle-label {
@@ -302,7 +331,24 @@ onUnmounted(() => document.removeEventListener('pointerdown', onDocumentPointerD
   color: var(--color-fg-muted);
 }
 
-.version-meta-toggle-hint,
+.version-meta-toggle-sep {
+  color: var(--color-base-400);
+}
+
+.version-meta-toggle-changelog-preview {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--color-fg);
+}
+
+.version-meta-toggle-changelog-preview--empty {
+  color: var(--color-base-400);
+  font-style: italic;
+}
+
 .version-meta-toggle-expanded {
   color: var(--color-base-400);
 }
