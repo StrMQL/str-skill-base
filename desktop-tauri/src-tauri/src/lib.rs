@@ -62,7 +62,39 @@ fn is_real_node_binary(path: &Path) -> bool {
             .unwrap_or(false)
 }
 
-fn resolve_bridge_paths(app: &AppHandle) -> Result<BridgePaths, String> {
+#[cfg(windows)]
+fn runtime_node_binary(app: &AppHandle, source: &Path) -> Result<PathBuf, String> {
+    let size = source
+        .metadata()
+        .map_err(|e| format!("failed to stat bundled Node {}: {e}", source.display()))?
+        .len();
+    let cache_dir = app
+        .path()
+        .app_cache_dir()
+        .unwrap_or_else(|_| std::env::temp_dir().join("skill-base-desktop-cache"))
+        .join("runtime-node");
+    std::fs::create_dir_all(&cache_dir)
+        .map_err(|e| format!("failed to create runtime Node dir {}: {e}", cache_dir.display()))?;
+
+    let runtime_node = cache_dir.join(format!("node-{size}.exe"));
+    if !is_real_node_binary(&runtime_node) {
+        std::fs::copy(source, &runtime_node).map_err(|e| {
+            format!(
+                "failed to copy runtime Node {} -> {}: {e}",
+                source.display(),
+                runtime_node.display()
+            )
+        })?;
+    }
+    Ok(runtime_node)
+}
+
+#[cfg(not(windows))]
+fn runtime_node_binary(_app: &AppHandle, source: &Path) -> Result<PathBuf, String> {
+    Ok(source.to_path_buf())
+}
+
+fn resolve_bridge_paths(app: &AppHandle, log_path: &Path) -> Result<BridgePaths, String> {
     if cfg!(debug_assertions) {
         return Ok(dev_bridge_paths());
     }
@@ -75,24 +107,31 @@ fn resolve_bridge_paths(app: &AppHandle) -> Result<BridgePaths, String> {
     // Tauri maps `src-tauri/resources/**` → $RESOURCE/resources/** (also try $RESOURCE root).
     let bases = [resource_dir.join("resources"), resource_dir.clone()];
     let mut last_err = String::from("bridge resources not found");
+    append_desktop_log(
+        log_path,
+        &format!("resolving bridge resources resource_dir={}", resource_dir.display()),
+    );
 
     for base in &bases {
-        let node = packaged_node_binary(base);
+        let bundled_node = packaged_node_binary(base);
         let script = base.join("bridge").join("server.mjs");
         let cli_lib_dir = base.join("cli-lib");
         let cli_lib = cli_lib_dir.exists().then_some(cli_lib_dir);
 
         if !script.exists() {
             last_err = format!("bridge script not found: {}", script.display());
+            append_desktop_log(log_path, &last_err);
             continue;
         }
-        if !is_real_node_binary(&node) {
+        if !is_real_node_binary(&bundled_node) {
             last_err = format!(
                 "bundled Node missing or invalid (need portable Node binary): {}",
-                node.display()
+                bundled_node.display()
             );
+            append_desktop_log(log_path, &last_err);
             continue;
         }
+        let node = runtime_node_binary(app, &bundled_node)?;
 
         eprintln!(
             "bridge: using node={} script={}",
@@ -214,6 +253,28 @@ fn bridge_unavailable_message(state: &AppState) -> String {
     })
 }
 
+fn bridge_response_snippet(body: &str) -> String {
+    const MAX_LEN: usize = 500;
+    let one_line = body.replace(['\r', '\n'], " ");
+    if one_line.chars().count() <= MAX_LEN {
+        return one_line;
+    }
+    let prefix: String = one_line.chars().take(MAX_LEN).collect();
+    format!("{prefix}...")
+}
+
+fn format_invalid_bridge_response_error(
+    channel: &str,
+    status: u16,
+    body: &str,
+    decode_error: &str,
+) -> String {
+    format!(
+        "channel={channel} status={status}: {decode_error}; body={}",
+        bridge_response_snippet(body)
+    )
+}
+
 async fn bridge_call(
     state: &AppState,
     channel: &str,
@@ -238,16 +299,27 @@ async fn bridge_call(
             format!("bridge request failed: {e}")
         })?;
 
-    let body: BridgeResponse = resp
-        .json()
+    let status = resp.status().as_u16();
+    let text = resp
+        .text()
         .await
         .map_err(|e| {
             append_desktop_log(
                 &state.log_path,
-                &format!("invalid bridge response channel={channel}: {e}"),
+                &format!("failed to read bridge response channel={channel} status={status}: {e}"),
             );
-            format!("invalid bridge response: {e}")
+            format!("failed to read bridge response: {e}")
         })?;
+
+    let body: BridgeResponse = serde_json::from_str(&text).map_err(|e| {
+        let detail =
+            format_invalid_bridge_response_error(channel, status, &text, &e.to_string());
+        append_desktop_log(
+            &state.log_path,
+            &format!("invalid bridge response {detail}"),
+        );
+        format!("invalid bridge response: {detail}")
+    })?;
 
     if body.ok {
         Ok(body.result.unwrap_or(serde_json::Value::Null))
@@ -417,7 +489,7 @@ pub fn run() {
         .setup(|app| {
             let log_path = desktop_log_path(app.handle());
             append_desktop_log(&log_path, "desktop starting");
-            let state = match resolve_bridge_paths(app.handle()).and_then(|paths| {
+            let state = match resolve_bridge_paths(app.handle(), &log_path).and_then(|paths| {
                 spawn_bridge(&paths, &log_path).map(|(port, child)| (port, child))
             }) {
                 Ok((port, child)) => {
@@ -457,4 +529,33 @@ pub fn run() {
                 }
             }
         });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invalid_bridge_response_error_includes_status_and_body_snippet() {
+        let message = format_invalid_bridge_response_error(
+            "skills:getInstalled",
+            502,
+            "<html><body>bad gateway from proxy</body></html>",
+            "expected value at line 1 column 1",
+        );
+
+        assert!(message.contains("channel=skills:getInstalled"));
+        assert!(message.contains("status=502"));
+        assert!(message.contains("<html><body>bad gateway"));
+    }
+
+    #[test]
+    fn bridge_response_snippet_truncates_utf8_without_panicking() {
+        let body = "错".repeat(600);
+
+        let snippet = bridge_response_snippet(&body);
+
+        assert!(snippet.ends_with("..."));
+        assert!(snippet.chars().count() <= 503);
+    }
 }
