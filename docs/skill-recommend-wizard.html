@@ -1,0 +1,888 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Skill 选型向导 — 按角色与系统推荐该做什么 Skill</title>
+  <style>
+    :root {
+      --bg: #0c0e12;
+      --panel: #141820;
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #e8eaef;
+      --muted: #8b929e;
+      --accent: #5eead4;
+      --accent-dim: rgba(94, 234, 212, 0.15);
+      --warn: #fbbf24;
+      --radius: 12px;
+      --font: "IBM Plex Sans", "Noto Sans SC", system-ui, sans-serif;
+      --mono: "IBM Plex Mono", "JetBrains Mono", ui-monospace, monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.55;
+    }
+    .noise {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.04;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      z-index: 0;
+    }
+    .glow {
+      position: fixed;
+      width: 60vmax;
+      height: 60vmax;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(94, 234, 212, 0.12) 0%, transparent 70%);
+      top: -20vmax;
+      right: -15vmax;
+      pointer-events: none;
+      z-index: 0;
+    }
+    main {
+      position: relative;
+      z-index: 1;
+      max-width: 720px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 4rem;
+    }
+    h1 {
+      font-size: 1.65rem;
+      font-weight: 600;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+    }
+    .lede {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin-bottom: 2rem;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.35rem 1.25rem;
+      margin-bottom: 1.25rem;
+    }
+    .step-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--accent);
+      margin-bottom: 0.35rem;
+    }
+    h2 {
+      font-size: 1.1rem;
+      margin: 0 0 1rem;
+      font-weight: 600;
+    }
+    .choices {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    label.choice {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.65rem;
+      padding: 0.75rem 0.85rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    label.choice:hover {
+      border-color: rgba(94, 234, 212, 0.35);
+      background: var(--accent-dim);
+    }
+    label.choice input {
+      margin-top: 0.2rem;
+      accent-color: var(--accent);
+    }
+    .choice-title { font-weight: 500; display: block; }
+    .choice-desc { font-size: 0.82rem; color: var(--muted); margin-top: 0.2rem; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      margin-top: 1.25rem;
+    }
+    button {
+      font-family: var(--font);
+      font-size: 0.9rem;
+      padding: 0.55rem 1.1rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text);
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent);
+      color: #042f2e;
+      border-color: transparent;
+      font-weight: 600;
+    }
+    button:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+    button:not(:disabled):hover {
+      filter: brightness(1.08);
+    }
+    .hidden { display: none !important; }
+    .result-card {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.85rem;
+      background: rgba(0, 0, 0, 0.2);
+    }
+    .result-card h3 {
+      margin: 0 0 0.35rem;
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .result-card p { margin: 0.35rem 0; font-size: 0.88rem; color: var(--muted); }
+    .tag {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 0.68rem;
+      padding: 0.15rem 0.4rem;
+      border-radius: 4px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--warn);
+      margin-right: 0.35rem;
+      margin-top: 0.35rem;
+    }
+    .priority-p1 { color: #f87171; }
+    .priority-p2 { color: #fcd34d; }
+    footer {
+      margin-top: 2rem;
+      font-size: 0.78rem;
+      color: var(--muted);
+      border-top: 1px solid var(--border);
+      padding-top: 1rem;
+    }
+    footer a { color: var(--accent); }
+    #exportOut {
+      width: 100%;
+      min-height: 140px;
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: #0a0c10;
+      color: var(--muted);
+      font-family: var(--mono);
+      font-size: 0.75rem;
+      resize: vertical;
+    }
+  </style>
+</head>
+<body>
+  <div class="noise" aria-hidden="true"></div>
+  <div class="glow" aria-hidden="true"></div>
+  <main>
+    <h1>Skill 选型向导</h1>
+    <p class="lede">
+      通过几步选择，推断你<strong>最该先固化成 Skill</strong>的内容。覆盖技术岗与<strong>市场、销售、创始人、创作者</strong>等非技术主责；并参考
+      <code>Agent-Skills4-什么值得做成Skill.md</code>、
+      <code>Claude-Skills-官方构建指南完整版.md</code>，以及「创意发散 / 一人公司」等<strong>无法穷举但可落地</strong>的思路。
+    </p>
+
+    <div id="wizard"></div>
+
+    <footer>
+      本页为离线单文件，可本地直接打开。正式写 Skill 时请遵守官方指南：文件夹 kebab-case、根文件必须名为 <code>SKILL.md</code>、技能目录内不要放 README（说明放进正文或 <code>references/</code>）。非技术 Skill 同样适用「窄 description + 触发测试」；创意类避免一个 Skill 包揽「所有写作」。
+    </footer>
+  </main>
+
+  <script>
+(function () {
+  const state = {
+    role: "",
+    systems: [],
+    teamScale: "",
+    pains: [],
+    mcp: "",
+    regulated: "",
+    precisionHabit: ""
+  };
+
+  const ROLES = [
+    { id: "designer", title: "设计师 / UX", desc: "Figma、组件库、视觉与无障碍、与研发对齐。" },
+    { id: "frontend", title: "前端工程", desc: "SPA、组件、状态、构建与性能。" },
+    { id: "backend", title: "后端工程", desc: "服务、API、数据库、消息队列。" },
+    { id: "fullstack", title: "全栈 / 小团队多面手", desc: "前后端都碰，上下文切换多。" },
+    { id: "data", title: "数据 / 分析 / BI", desc: "埋点、指标体系、SQL、报表口径。" },
+    { id: "growth", title: "增长 / 运营产品", desc: "实验、漏斗、活动配置与文案。" },
+    { id: "devops", title: "平台 / SRE / DevOps", desc: "发布、K8s、可观测性、成本与安全基线。" },
+    { id: "pm_qa", title: "产品 / 测试", desc: "验收标准、用例、需求文档与挡板联调。" },
+    { id: "security", title: "安全 / 合规", desc: "审计、脱敏、密钥与访问边界。" },
+    { id: "lead", title: "技术负责人 / 架构", desc: "跨团队规范、服务边界、技术债优先级。" },
+    { id: "marketing_brand", title: "市场 / 品牌 / 内容", desc: "Campaign、官网、传播与稿件口径。" },
+    { id: "sales_cs", title: "销售 / 客户成功", desc: "提案、演示、报价、续约与工单沟通。" },
+    { id: "hr_admin", title: "HR / 行政 / 法务协助", desc: "制度、面试、员工沟通与模板（非法律意见）。" },
+    { id: "founder_ops", title: "创始人 / 一人公司综管", desc: "叙事、定价、外包对接；你=产品+商务+运营。" },
+    { id: "creator", title: "自媒体 / 创作者", desc: "脚本、栏目、社群、合作 Brief。" }
+  ];
+
+  const SYSTEMS = [
+    { id: "monolith_web", title: "单体或少量服务 Web 产品", desc: "代码相对集中，前后端仓库可分开。" },
+    { id: "microservices", title: "微服务 + 网关", desc: "多仓库、多配置、同步/异步混杂。" },
+    { id: "mobile", title: "移动端（原生 / 跨端）", desc: "发版节奏、应用商店与离线。" },
+    { id: "data_platform", title: "数据平台 / 管道 / 数仓", desc: "ETL、调度、表血缘与口径。" },
+    { id: "b2b_saas", title: "B2B SaaS / 多租户", desc: "租户隔离、权限模型、审计日志。" },
+    { id: "oss", title: "开源库 / CLI / SDK", desc: "对外 API 稳定、semver、贡献者体验。" },
+    { id: "internal_tools", title: "内部工具 / 低代码胶水", desc: "文档少、靠口头传。" },
+    { id: "greenfield", title: "从 0 到 1 新项目", desc: "尚未沉淀规范，最适合「先写 Skill 再写代码」。" },
+    { id: "solopreneur", title: "一人公司 / 副业 solo", desc: "无专职职能分工，上下文全靠你一人携带。" },
+    { id: "agency", title: "乙方 / 代运营 / 咨询交付", desc: "多客户、多模板、交付物重复度高。" },
+    { id: "creative_studio", title: "创意工作室 / IP / 游戏叙事", desc: "世界观、角色、活动机制与宣发文案。" },
+    { id: "content_media", title: "内容向（播客 / 视频 / newsletter）", desc: "主产出非代码，而是栏目与脚本。" }
+  ];
+
+  const PAINS = [
+    { id: "repeat_correct", title: "同一句话纠正模型很多次（包管理、目录、请求封装）", desc: "命中「三条准入」里的重复。" },
+    { id: "wrong_service", title: "后端总改错服务 / 库表 / topic", desc: "缺架构地图与禁止项。" },
+    { id: "wrong_ui", title: "UI 好看但和设计稿两套语言", desc: "缺 token 与组件约束。" },
+    { id: "numbers_wrong", title: "统计、对账、行数等「看起来对」其实错", desc: "应调度脚本或 API，别让 LLM 手算。" },
+    { id: "review_loop", title: "PR 来回挑同一类问题", desc: "适合 review 口径 Skill。" },
+    { id: "pii_leak", title: "日志 / mock / 埋点里出现敏感字段", desc: "脱敏与埋点黑名单。" },
+    { id: "mcp_chaos", title: "接了 MCP 但调用顺序总乱", desc: "官方「问题优先」编排模式。" },
+    { id: "trigger_noise", title: "Skill 老在不该出现时触发", desc: "描述过宽，需拆 Skill 或加负面触发说明。" },
+    { id: "tone_drift", title: "品牌语气、禁忌词或「能说什么」口径不稳", desc: "对外稿每次都要口头叮嘱一遍。" },
+    { id: "idea_flat", title: "头脑风暴发虚、缺少约束与反面论证", desc: "适合结构化创意流程 Skill（类 brainstorm）。" },
+    { id: "doc_chaos", title: "报价单、邮件、提案结构每次现编", desc: "模板 + 必填字段 Skill。" },
+    { id: "solo_repeat", title: "新开对话就要重新介绍业务与定位", desc: "「一页纸公司 brief」Skill。" }
+  ];
+
+  const NON_TECH_ROLES = ["marketing_brand", "sales_cs", "hr_admin", "founder_ops", "creator"];
+
+  /** @type {Array<{id:string,title:string,body:string,priority:number,tags:string[],refs:string[],match:(s:typeof state)=>boolean}>} */
+  const CATALOG = [
+    {
+      id: "team_defaults",
+      title: "团队默认值 Skill",
+      body: "包管理器、目录约定、错误处理范式、测试 runner 与文件命名。把「每个新任务都要说一遍」的写进正文，description 只写「写业务代码、加页面、加接口」等触发面。",
+      priority: 1,
+      tags: ["基础", "省轮次"],
+      refs: ["Agent-Skills4 §1", "官方：用例驱动"],
+      match: (s) => ["frontend", "backend", "fullstack", "lead"].includes(s.role) || s.pains.includes("repeat_correct")
+    },
+    {
+      id: "scaffold_api",
+      title: "REST / RPC 脚手架 Skill",
+      body: "分页参数名、错误体、request_id、鉴权头。对应「加某某列表接口」一句话对齐骨架。",
+      priority: 1,
+      tags: ["脚手架"],
+      refs: ["Agent-Skills4 §2", "仓库示例 acme-rest-list-endpoint"],
+      match: (s) => ["backend", "fullstack", "lead"].includes(s.role) || s.systems.includes("microservices") || s.systems.includes("b2b_saas")
+    },
+    {
+      id: "scaffold_ui",
+      title: "页面骨架 Skill（列表 / 表单 / 详情）",
+      body: "布局壳、表格组件、空态与加载态组件名写死，避免从裸 table 起手写。",
+      priority: 1,
+      tags: ["脚手架", "前端"],
+      refs: ["Agent-Skills4 §2"],
+      match: (s) => ["frontend", "fullstack", "designer"].includes(s.role) || s.pains.includes("wrong_ui")
+    },
+    {
+      id: "backend_landscape",
+      title: "后端「地图 + 挡板」Skill",
+      body: "服务表（职责、path、仓库）、禁止跨库 JOIN、开发环境 stub URL、topic 生产者/消费者、配置分层（ConfigMap vs Vault）。表格 + 禁止项，少贴大图。",
+      priority: 1,
+      tags: ["微服务", "上下文"],
+      refs: ["Agent-Skills4 后端小节", "acme-backend-landscape"],
+      match: (s) => s.systems.includes("microservices") || s.role === "backend" || s.pains.includes("wrong_service")
+    },
+    {
+      id: "pitfalls",
+      title: "易踩坑清单 Skill（否定句 + 反例）",
+      body: "竞态、i18n、SQL 注入红线、性能雷区。适合 onboarding 与 AI 补代码共用。",
+      priority: 2,
+      tags: ["质量"],
+      refs: ["Agent-Skills4 §3"],
+      match: (s) => ["frontend", "backend", "fullstack"].includes(s.role) || s.teamScale === "large"
+    },
+    {
+      id: "review_rubric",
+      title: "Code review 口径 Skill",
+      body: "命名、测试豁免边界、日志与 PII、PR 描述必填项。减少「改完再被说一遍」。",
+      priority: 2,
+      tags: ["评审"],
+      refs: ["Agent-Skills4 §4", "acme-pr-review-rubric"],
+      match: (s) => s.pains.includes("review_loop") || s.role === "lead" || s.teamScale === "large"
+    },
+    {
+      id: "runbook_stable",
+      title: "外部系统「稳定子集」Skill",
+      body: "网关前缀、错误码语义、发布 job 名、回滚命令。不写「今晚谁 oncall」这类实时信息，改链 wiki 或 MCP。",
+      priority: 2,
+      tags: ["运维", "对接"],
+      refs: ["Agent-Skills4 §5", "官方：技能 + MCP 厨房类比"],
+      match: (s) => ["devops", "backend", "lead"].includes(s.role) || s.systems.includes("microservices")
+    },
+    {
+      id: "orchestrate_scripts",
+      title: "调度型 Skill + scripts/",
+      body: "SKILL.md 规定「必须先跑某命令 / 调某只读接口」，模型只解读 stdout 或 JSON。对账、行数、复杂聚合一律别心算。",
+      priority: 1,
+      tags: ["精确性", "官方目录 scripts"],
+      refs: ["Agent-Skills4 §6", "官方：文件夹结构", "acme-orchestrate-line-count"],
+      match: (s) => s.pains.includes("numbers_wrong") || s.precisionHabit === "yes" || s.role === "data"
+    },
+    {
+      id: "privacy_tracking",
+      title: "脱敏 + 埋点（可拆成两个窄 Skill）",
+      body: "PII 表、日志样例、事件命名与 properties 黑名单；与研发 Skill 分文件，避免 description 互抢。",
+      priority: 1,
+      tags: ["合规", "增长"],
+      refs: ["Agent-Skills4 §7", "acme-privacy-redaction", "acme-analytics-events"],
+      match: (s) => ["data", "growth", "security"].includes(s.role) || s.pains.includes("pii_leak") || s.regulated === "yes"
+    },
+    {
+      id: "design_handoff",
+      title: "设计体系与交付 Skill",
+      body: "Token、间距阶梯、组件状态、切图规则、文案语气、WCAG 底线；给 AI 当 briefing，第一轮就对齐 Figma。",
+      priority: 1,
+      tags: ["设计"],
+      refs: ["Agent-Skills4 §8", "官方：文档与资产类技能", "acme-design-system-handoff"],
+      match: (s) => s.role === "designer" || s.pains.includes("wrong_ui")
+    },
+    {
+      id: "mcp_workflow",
+      title: "MCP 增强：编排顺序 Skill",
+      body: "按官方「顺序工作流」列出步骤、每步调用的工具名、参数从哪一步结果来、失败重试策略。问题优先于工具罗列。",
+      priority: 2,
+      tags: ["MCP", "官方第五章"],
+      refs: ["官方：模式1 顺序编排", "MCP+技能"],
+      match: (s) => s.mcp === "heavy" || s.pains.includes("mcp_chaos")
+    },
+    {
+      id: "references_deep",
+      title: "references/ 渐进式厚文档",
+      body: "把长 API 说明、完整错误码表放进 references/；SKILL.md 只保留索引与必读段。符合官方三级披露。",
+      priority: 3,
+      tags: ["渐进式披露"],
+      refs: ["官方：第一/二/三级加载"],
+      match: (s) => s.systems.includes("b2b_saas") || s.systems.includes("microservices") || s.teamScale === "large"
+    },
+    {
+      id: "trigger_tests_doc",
+      title: "触发测试用例清单（写进 references 或 SKILL 附录）",
+      body: "列出「应触发」与「不应触发」的例句，迭代 description。官方第三章。",
+      priority: 3,
+      tags: ["测试"],
+      refs: ["官方：触发测试"],
+      match: (s) => s.pains.includes("trigger_noise") || s.role === "pm_qa"
+    },
+    {
+      id: "tenant_audit",
+      title: "多租户隔离与审计叙事 Skill",
+      body: "租户 id 传递位置、禁止跨租户查询、审计日志字段。B2B SaaS 高频幻觉区。",
+      priority: 2,
+      tags: ["想象扩展", "B2B"],
+      refs: ["Agent-Skills4 安全边界"],
+      match: (s) => s.systems.includes("b2b_saas") || (s.regulated === "yes" && s.role === "backend")
+    },
+    {
+      id: "mobile_release",
+      title: "移动端发版与配置 Skill",
+      body: "版本号规则、环境切换、热更新边界、应用商店文案禁区。训练集里 Web 多、原生少，更需 Skill。",
+      priority: 2,
+      tags: ["想象扩展", "移动端"],
+      refs: ["Agent-Skills4 前端 vs 后端上下文"],
+      match: (s) => s.systems.includes("mobile")
+    },
+    {
+      id: "data_lineage",
+      title: "指标口径与表血缘 Skill",
+      body: "核心指标定义、主表、时间字段、去重规则；SQL 生成前必须先对照本 Skill 或走只读查询工具。",
+      priority: 2,
+      tags: ["想象扩展", "数据"],
+      refs: ["Agent-Skills4 纯数据查询"],
+      match: (s) => s.systems.includes("data_platform") || s.role === "data"
+    },
+    {
+      id: "oss_contributor",
+      title: "开源贡献与 semver Skill",
+      body: "Breaking 策略、CHANGELOG 格式、issue 模板、最小复现要求。对外 API 不要靠对话临时编。",
+      priority: 3,
+      tags: ["想象扩展", "开源"],
+      refs: ["官方：分发与定位"],
+      match: (s) => s.systems.includes("oss")
+    },
+    {
+      id: "greenfield_bootstrap",
+      title: "从 0 到 1：先生 Skill 再写代码",
+      body: "新项目把「会反复变」的先收敛成 2～3 个窄 Skill（默认 + 脚手架 + review），比后补 README 更省团队总 token。",
+      priority: 2,
+      tags: ["新项目"],
+      refs: ["Agent-Skills4 开篇"],
+      match: (s) => s.systems.includes("greenfield") || s.role === "lead"
+    },
+    {
+      id: "stub_pm_qa",
+      title: "挡板联调与验收脚本（PM/测试 + 后端共用）",
+      body: "哪些接口走 stub、期望响应 fixture、验收 checklist。减少「环境不对」扯皮。",
+      priority: 2,
+      tags: ["挡板", "联调"],
+      refs: ["Agent-Skills4 挡板", "pm_qa"],
+      match: (s) => (s.role === "pm_qa" && s.systems.includes("microservices")) || s.pains.includes("wrong_service")
+    },
+    {
+      id: "brainstorm_facilitation",
+      title: "头脑风暴 / 创意发散流程 Skill（类 brainstorm）",
+      body: "在 SKILL.md 里固定：先澄清目标与用户、再 SCAMPER / 反方辩护 / 约束反转、最后收敛为 3 条可验证假设。description 写「做新品概念、campaign 大方向、命名脑暴」等，避免过宽。可把追问清单放 references/。可与 superpowers 的 brainstorming 思路对齐。",
+      priority: 2,
+      tags: ["创意", "非技术"],
+      refs: ["官方：第一类 文档与资产", "superpowers brainstorming（若已安装）"],
+      match: (s) =>
+        NON_TECH_ROLES.includes(s.role) ||
+        s.systems.includes("creative_studio") ||
+        s.pains.includes("idea_flat") ||
+        s.role === "growth" ||
+        s.role === "designer"
+    },
+    {
+      id: "brand_voice_legal_safe",
+      title: "品牌语气 + 对外禁用词 / 合规提醒 Skill",
+      body: "我们是谁、对谁说、三档语气（正式/友好/硬核）；禁用词与竞品名写法；医疗金融等场景加「非专业意见、以法务为准」模板句。与研发 Skill 分文件，description 只写「写对外稿、新闻稿、投放文案」时触发。",
+      priority: 1,
+      tags: ["市场", "合规叙事"],
+      refs: ["Agent-Skills4 §7 脱敏与安全边界", "官方：窄 description"],
+      match: (s) =>
+        ["marketing_brand", "sales_cs", "hr_admin"].includes(s.role) ||
+        s.pains.includes("tone_drift") ||
+        s.regulated === "yes" ||
+        s.systems.includes("agency")
+    },
+    {
+      id: "solo_company_brief",
+      title: "一人公司 / 副业「一页纸 Brief」Skill",
+      body: "固定字段：一句话定位、ICP、三个痛点、定价逻辑、三条社证、常见反对意见与回应、当前季度唯一北极星指标。新开对话先贴摘要，减少重复自我介绍。可配 assets/ 放 PDF 导出模板。",
+      priority: 1,
+      tags: ["一人公司", "综管"],
+      refs: ["Agent-Skills4 三条准入：重复", "官方：assets/"],
+      match: (s) =>
+        s.role === "founder_ops" ||
+        s.systems.includes("solopreneur") ||
+        s.pains.includes("solo_repeat") ||
+        (s.teamScale === "solo" && NON_TECH_ROLES.includes(s.role))
+    },
+    {
+      id: "proposal_email_skeleton",
+      title: "提案 / 报价 / 商务邮件骨架 Skill",
+      body: "段落顺序、必填字段（范围、交付物、时间、付款节点、假设与不在范围）、附件命名。乙方多客户时按客户代号分 references/。减少 doc_chaos。",
+      priority: 2,
+      tags: ["销售", "乙方"],
+      refs: ["官方：工作流程自动化第二类", "Agent-Skills4 脚手架思想"],
+      match: (s) =>
+        s.role === "sales_cs" ||
+        s.systems.includes("agency") ||
+        s.pains.includes("doc_chaos")
+    },
+    {
+      id: "content_series_playbook",
+      title: "栏目与内容生产 Skill（创作者 / 媒体向）",
+      body: "固定栏目矩阵、每期结构（钩子-展开-CTA）、口播时长、封面字禁区、合作 Brief 必填项（排他、稿酬、改稿轮次）。description 写「写脚本、定选题、改标题」时触发。",
+      priority: 2,
+      tags: ["创作者", "内容"],
+      refs: ["官方：第一类 文档与资产", "Agent-Skills4 稳定可执行"],
+      match: (s) => s.role === "creator" || s.systems.includes("content_media") || (s.role === "marketing_brand" && s.pains.includes("doc_chaos"))
+    },
+    {
+      id: "hr_people_comms",
+      title: "人力与员工沟通模板 Skill",
+      body: "面试反馈口径、offer/拒绝信结构、onboarding 检查表、绩效谈话禁止项（非法律意见）。敏感内容仍走法务；Skill 只收「可重复、已审批」的段落。",
+      priority: 2,
+      tags: ["HR", "非技术"],
+      refs: ["Agent-Skills4 §7", "官方：可组合性"],
+      match: (s) => s.role === "hr_admin"
+    },
+    {
+      id: "founder_vendor_tech_liaison",
+      title: "创始人对接外包 / 技术决策「翻译」Skill",
+      body: "你们栈、仓库入口、验收定义、付款与里程碑对齐话术；禁止替外包猜需求——用 checklist 逼出范围。可与 acme-backend-landscape 式地图并存，但 description 写「和外包对齐技术方案、评审交付」时触发。",
+      priority: 2,
+      tags: ["创始人", "边界"],
+      refs: ["Agent-Skills4 后端地图", "官方：问题优先编排"],
+      match: (s) => s.role === "founder_ops" && (s.systems.includes("solopreneur") || s.systems.includes("greenfield") || s.systems.includes("agency"))
+    },
+    {
+      id: "narrative_pitch_story",
+      title: "融资 / 合作叙事与故事弧 Skill",
+      body: "电梯稿 30s、邮件版 150 字、路演版故事线（问题-洞察-方案- traction）；数字必须来自真实材料或写「待填」占位，禁止模型编营收。可挂 references/ 放历史版本。",
+      priority: 3,
+      tags: ["叙事", "创始人"],
+      refs: ["Agent-Skills4 精确性：数字不手算", "官方：成功标准"],
+      match: (s) => s.role === "founder_ops" || (s.systems.includes("solopreneur") && s.pains.includes("solo_repeat"))
+    },
+    {
+      id: "non_tech_mcp_light",
+      title: "轻量 MCP + Skill：Notion / 飞书 / 日历类",
+      body: "若已接 MCP，用 Skill 写清「先搜哪类页面、再创建、再回链」顺序；无 MCP 则 Skill 只收静态模板与命名规范。官方厨房类比：MCP 是厨房，Skill 是菜谱。",
+      priority: 3,
+      tags: ["非技术", "MCP"],
+      refs: ["官方：技能+MCP", "问题优先"],
+      match: (s) => (NON_TECH_ROLES.includes(s.role) && s.mcp === "some") || (NON_TECH_ROLES.includes(s.role) && s.mcp === "heavy")
+    },
+    {
+      id: "external_doc_review",
+      title: "对外材料评审清单 Skill（非 PR）",
+      body: "事实与数字来源、称谓与敏感地区表述、链接与附件命名、禁用夸张词。适合市场、销售、人力在发出前自检；与工程 review Skill 分文件。",
+      priority: 3,
+      tags: ["非技术", "评审"],
+      refs: ["官方：定性成功标准", "Agent-Skills4 §4 思路迁移"],
+      match: (s) =>
+        NON_TECH_ROLES.includes(s.role) &&
+        (s.pains.includes("review_loop") || s.pains.includes("tone_drift") || s.pains.includes("doc_chaos"))
+    }
+  ];
+
+  let step = 0;
+  const wizard = document.getElementById("wizard");
+  let delegated = false;
+
+  function canNext() {
+    if (step === 0) return !!state.role;
+    if (step === 1) return state.systems.length > 0;
+    if (step === 2) return !!state.teamScale;
+    if (step === 3) return state.pains.length > 0;
+    if (step === 4) return !!state.mcp && !!state.regulated && !!state.precisionHabit;
+    return true;
+  }
+
+  function render() {
+    if (step <= 4) {
+      wizard.innerHTML = renderStep() + renderNav();
+    } else {
+      wizard.innerHTML = renderResults() + renderNav();
+      const ta = document.getElementById("exportOut");
+      if (ta) ta.value = buildMarkdown();
+    }
+    attachDelegationOnce();
+  }
+
+  function attachDelegationOnce() {
+    if (delegated) return;
+    delegated = true;
+    wizard.addEventListener("click", (e) => {
+      const t = e.target;
+      const el = t instanceof Element ? t.closest("#btnNext, #btnBack, #btnRestart, #btnCopy") : null;
+      if (!el) return;
+      if (el.id === "btnNext" && canNext()) {
+        step++;
+        render();
+      }
+      if (el.id === "btnBack") {
+        if (step > 4) step = 4;
+        else step = Math.max(0, step - 1);
+        render();
+      }
+      if (el.id === "btnRestart") {
+        step = 0;
+        state.role = "";
+        state.systems = [];
+        state.teamScale = "";
+        state.pains = [];
+        state.mcp = "";
+        state.regulated = "";
+        state.precisionHabit = "";
+        render();
+      }
+      if (el.id === "btnCopy") {
+        const md = buildMarkdown();
+        navigator.clipboard.writeText(md).then(() => {
+          const b = document.getElementById("btnCopy");
+          if (b) {
+            const o = b.textContent;
+            b.textContent = "已复制";
+            setTimeout(() => { b.textContent = o; }, 1500);
+          }
+        }).catch(() => alert("复制失败，请手动全选文本框复制。"));
+      }
+    });
+    wizard.addEventListener("change", (e) => {
+      const t = e.target;
+      if (!(t instanceof HTMLInputElement)) return;
+      if (t.name === "role") state.role = t.value;
+      if (t.name === "sys") {
+        if (t.checked) {
+          if (!state.systems.includes(t.value)) state.systems.push(t.value);
+        } else {
+          state.systems = state.systems.filter((x) => x !== t.value);
+        }
+      }
+      if (t.name === "team") state.teamScale = t.value;
+      if (t.name === "pain") {
+        if (t.checked) {
+          if (!state.pains.includes(t.value)) state.pains.push(t.value);
+        } else {
+          state.pains = state.pains.filter((x) => x !== t.value);
+        }
+      }
+      if (t.name === "mcp") state.mcp = t.value;
+      if (t.name === "reg") state.regulated = t.value;
+      if (t.name === "prec") state.precisionHabit = t.value;
+      if (step <= 4) {
+        const next = document.getElementById("btnNext");
+        if (next) next.disabled = !canNext();
+      }
+    });
+  }
+
+  function renderStep() {
+    if (step === 0) {
+      return `
+        <div class="panel">
+          <div class="step-label">Step 1 / 5</div>
+          <h2>你的主角色是？</h2>
+          <div class="choices">
+            ${ROLES.map((r) => `
+              <label class="choice">
+                <input type="radio" name="role" value="${r.id}" ${state.role === r.id ? "checked" : ""} />
+                <span><span class="choice-title">${r.title}</span><span class="choice-desc">${r.desc}</span></span>
+              </label>
+            `).join("")}
+          </div>
+        </div>`;
+    }
+    if (step === 1) {
+      return `
+        <div class="panel">
+          <div class="step-label">Step 2 / 5</div>
+          <h2>你在做的系统更接近？（可多选）</h2>
+          <div class="choices">
+            ${SYSTEMS.map((sys) => `
+              <label class="choice">
+                <input type="checkbox" name="sys" value="${sys.id}" ${state.systems.includes(sys.id) ? "checked" : ""} />
+                <span><span class="choice-title">${sys.title}</span><span class="choice-desc">${sys.desc}</span></span>
+              </label>
+            `).join("")}
+          </div>
+        </div>`;
+    }
+    if (step === 2) {
+      return `
+        <div class="panel">
+          <div class="step-label">Step 3 / 5</div>
+          <h2>协作规模</h2>
+          <div class="choices">
+            ${[
+              { id: "solo", title: "个人或小队（≤5 人）", desc: "口头还能覆盖，Skill 贵精不贵多。" },
+              { id: "medium", title: "多小队（5～30 人）", desc: "需要共享「默认值」与评审口径。" },
+              { id: "large", title: "大组织 / 多 BU", desc: "强依赖文档化、拆分窄 Skill、防触发重叠。" }
+            ].map((o) => `
+              <label class="choice">
+                <input type="radio" name="team" value="${o.id}" ${state.teamScale === o.id ? "checked" : ""} />
+                <span><span class="choice-title">${o.title}</span><span class="choice-desc">${o.desc}</span></span>
+              </label>
+            `).join("")}
+          </div>
+        </div>`;
+    }
+    if (step === 3) {
+      return `
+        <div class="panel">
+          <div class="step-label">Step 4 / 5</div>
+          <h2>最近最折磨你的三件事（至少选一项）</h2>
+          <p class="lede" style="margin-top:-0.5rem">对应「多轮纠正 = 高 Skill 优先级」。</p>
+          <div class="choices">
+            ${PAINS.map((p) => `
+              <label class="choice">
+                <input type="checkbox" name="pain" value="${p.id}" ${state.pains.includes(p.id) ? "checked" : ""} />
+                <span><span class="choice-title">${p.title}</span><span class="choice-desc">${p.desc}</span></span>
+              </label>
+            `).join("")}
+          </div>
+        </div>`;
+    }
+    if (step === 4) {
+      return `
+        <div class="panel">
+          <div class="step-label">Step 5 / 5</div>
+          <h2>环境与习惯</h2>
+          <p style="color:var(--muted);font-size:0.88rem;margin:0 0 1rem">用于匹配 MCP 编排、合规与精确性类建议。</p>
+          <h2 style="font-size:0.95rem">是否深度使用 MCP / 内部工具 API？</h2>
+          <p style="color:var(--muted);font-size:0.8rem;margin:0 0 0.5rem">非技术主责若很少接工具链，可选「不适用」。</p>
+          <div class="choices" style="margin-bottom:1rem">
+            ${[
+              { id: "none", title: "很少或没有", desc: "" },
+              { id: "some", title: "偶尔", desc: "" },
+              { id: "heavy", title: "重度（多工具链编排）", desc: "" },
+              { id: "na", title: "不适用（主责几乎不写代码、少接 API）", desc: "市场、人力等可选此项。" }
+            ].map((o) => `
+              <label class="choice">
+                <input type="radio" name="mcp" value="${o.id}" ${state.mcp === o.id ? "checked" : ""} />
+                <span class="choice-title">${o.title}</span>
+              </label>
+            `).join("")}
+          </div>
+          <h2 style="font-size:0.95rem">是否金融 / 医疗 / 政务等强监管域？</h2>
+          <div class="choices" style="margin-bottom:1rem">
+            ${[
+              { id: "yes", title: "是", desc: "" },
+              { id: "no", title: "否", desc: "" }
+            ].map((o) => `
+              <label class="choice">
+                <input type="radio" name="reg" value="${o.id}" ${state.regulated === o.id ? "checked" : ""} />
+                <span class="choice-title">${o.title}</span>
+              </label>
+            `).join("")}
+          </div>
+          <h2 style="font-size:0.95rem">你是否愿意让 AI「先跑命令再回答」来换精确性？</h2>
+          <p style="color:var(--muted);font-size:0.8rem;margin:0 0 0.5rem">主责为写作、创意、商务时可选「不适用」。</p>
+          <div class="choices">
+            ${[
+              { id: "yes", title: "愿意（推荐）", desc: "适合 scripts/ + 只读接口。" },
+              { id: "no", title: "暂时不愿意", desc: "仍推荐把易算错部分逐步迁出 LLM。" },
+              { id: "na", title: "不适用", desc: "主责为文案、创意、关系型工作，少有可脚本化数字。" }
+            ].map((o) => `
+              <label class="choice">
+                <input type="radio" name="prec" value="${o.id}" ${state.precisionHabit === o.id ? "checked" : ""} />
+                <span><span class="choice-title">${o.title}</span><span class="choice-desc">${o.desc}</span></span>
+              </label>
+            `).join("")}
+          </div>
+        </div>`;
+    }
+    return "";
+  }
+
+  function escapeHtml(s) {
+    return String(s)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function ideaBankHtml() {
+    return `
+      <div class="panel" style="border-color:rgba(94,234,212,0.25)">
+        <div class="step-label">思路库 · 无法穷举</div>
+        <h2>创意类、一人公司、非技术：还可往哪些方向长？</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin:0 0 1rem">
+          下列不必全部做成 Skill；满足「重复 + 稳定 + 可执行」再写进仓库。官方第一类「文档与资产创建」很适合非技术：模板、清单、语气、品牌边界，都可渐进式披露（正文短、细节进 <code>references/</code>）。
+        </p>
+        <h3 style="font-size:0.95rem;margin:0.75rem 0 0.35rem;color:var(--text)">创意与发散（含类 brainstorm）</h3>
+        <ul style="margin:0;padding-left:1.2rem;color:var(--muted);font-size:0.86rem">
+          <li>「反向 brief」Skill：先让模型扮演最难搞的用户挑刺，再进入方案。</li>
+          <li>「约束游戏」Skill：预算上限、禁止渠道、必须复用旧素材 x 条——逼出非常规组合。</li>
+          <li>「命名与 slogan」专用 Skill：音节、语言、注册商标检索提醒（流程不写进法律结论）。</li>
+          <li>「周会灵感银行」Skill：固定收集渠道（用户原话、客服标签），输出只认引用格式。</li>
+        </ul>
+        <h3 style="font-size:0.95rem;margin:0.75rem 0 0.35rem;color:var(--text)">一人公司 / 综管</h3>
+        <ul style="margin:0;padding-left:1.2rem;color:var(--muted);font-size:0.86rem">
+          <li>「本周唯一三件事」Skill：与一页纸 Brief 联动，防止模型帮你「同时做十个战略」。</li>
+          <li>「外包询价邮件」Skill：必填信息清单（交付物、源文件、修改轮次、时区），减少扯皮轮次。</li>
+          <li>「税务/发票摘要话术」Skill：只放你已确认的口径与「请咨询持证会计师」类免责声明，不塞可变政策细节。</li>
+          <li>「个人品牌多平台」Skill：各平台字数上限、链接规范、同一稿件的改写梯度（长文→短文→口播）。</li>
+        </ul>
+        <h3 style="font-size:0.95rem;margin:0.75rem 0 0.35rem;color:var(--text)">市场、销售、人力、创作者（非工程）</h3>
+        <ul style="margin:0;padding-left:1.2rem;color:var(--muted);font-size:0.86rem">
+          <li>「竞品提及规则」Skill：什么能对比、什么必须中立表述、数据引用必须带来源占位符。</li>
+          <li>「客户分级跟进节奏」Skill：触达间隔、禁止骚扰话术、升级工单条件（与 CRM MCP 可搭配）。</li>
+          <li>「活动复盘八股」Skill：曝光、转化、异常、下周实验——表格化，模型按格填空。</li>
+          <li>「播客/视频Shownotes」Skill：时间戳格式、赞助商口播位置、Shownotes SEO 禁止堆砌关键词。</li>
+        </ul>
+        <p style="color:var(--muted);font-size:0.8rem;margin:1rem 0 0">
+          若已安装团队里的 <strong>brainstorming</strong> 类 Skill，可把本向导推荐的「流程段落」合并进 references，避免两个 Skill 的 description 抢触发。
+        </p>
+      </div>`;
+  }
+
+  function renderResults() {
+    const matched = CATALOG.filter((c) => c.match(state));
+    const unmatched = CATALOG.filter((c) => !c.match(state));
+    const bonus = unmatched.slice(0, 3);
+
+    matched.sort((a, b) => a.priority - b.priority);
+
+    const intro = `
+      <div class="panel">
+        <div class="step-label">结果</div>
+        <h2>推荐优先做的 Skill（共 ${matched.length} 条）</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin:0">
+          P1 尽量本周落一个最小版；P2、P3 可放进 <code>references/</code> 或排期迭代。
+          官方建议：先定义 2～3 个具体用例，再写 SKILL.md；文件夹名 kebab-case。
+        </p>
+      </div>`;
+
+    const cards = matched.map((c) => `
+      <div class="result-card">
+        <h3>${escapeHtml(c.title)} <span class="tag priority-p${c.priority}">P${c.priority}</span></h3>
+        <p>${escapeHtml(c.body)}</p>
+        <div>${c.tags.map((t) => `<span class="tag">${escapeHtml(t)}</span>`).join("")}</div>
+        <p style="font-size:0.78rem;margin-top:0.5rem">${c.refs.map((r) => `<span class="tag" style="color:var(--muted)">${escapeHtml(r)}</span>`).join("")}</p>
+      </div>
+    `).join("");
+
+    const wild = `
+      <div class="panel">
+        <h2>可以再想的「扩展位」</h2>
+        <p style="color:var(--muted);font-size:0.88rem;margin-top:0">
+          下列本次未命中你的选项，但常被忽略；若半年内会碰到，可提前写一个窄 Skill 占位。
+        </p>
+        ${bonus.map((c) => `
+          <div class="result-card" style="opacity:0.9">
+            <h3 style="color:var(--muted)">${escapeHtml(c.title)}</h3>
+            <p>${escapeHtml(c.body)}</p>
+          </div>
+        `).join("")}
+      </div>
+      <div class="panel">
+        <h2>导出清单（Markdown）</h2>
+        <textarea id="exportOut" readonly></textarea>
+        <div class="actions">
+          <button type="button" class="primary" id="btnCopy">复制到剪贴板</button>
+        </div>
+      </div>`;
+
+    return intro + cards + wild + ideaBankHtml();
+  }
+
+  function renderNav() {
+    const atEnd = step > 4;
+    return `
+      <div class="actions">
+        ${step > 0 ? `<button type="button" id="btnBack">上一步</button>` : ""}
+        ${!atEnd ? `<button type="button" class="primary" id="btnNext" ${canNext() ? "" : "disabled"}>下一步</button>` : `<button type="button" id="btnRestart">重新选择</button>`}
+      </div>`;
+  }
+
+  function buildMarkdown() {
+    const matched = CATALOG.filter((c) => c.match(state)).sort((a, b) => a.priority - b.priority);
+    const roleLabel = ROLES.find((r) => r.id === state.role)?.title || state.role;
+    const sysLabels = state.systems.map((id) => SYSTEMS.find((s) => s.id === id)?.title || id);
+    const painLabels = state.pains.map((id) => PAINS.find((p) => p.id === id)?.title || id);
+    let md = "# 建议制作的 Skill 清单（向导生成）\n\n";
+    md += "## 你的选择摘要\n\n";
+    md += `- 角色: ${roleLabel}\n- 系统: ${sysLabels.join("；")}\n- 规模: ${state.teamScale}\n`;
+    md += `- 痛点: ${painLabels.join("；")}\n- MCP: ${state.mcp} / 监管: ${state.regulated} / 精确习惯: ${state.precisionHabit}\n\n`;
+    md += "## 推荐项\n\n";
+    matched.forEach((c) => {
+      md += `### ${c.title} (P${c.priority})\n\n${c.body}\n\n参考: ${c.refs.join("；")}\n\n`;
+    });
+    md += "\n## 思路库（创意 / 一人公司 / 非技术）\n\n";
+    md += "导出后若需更多「无法穷举」方向，请回到 HTML 结果页底部的「思路库」区块；含类 brainstorm、反向 brief、一人公司外包话术等。\n\n";
+    md += "---\n生成自 skill-base 仓库 `docs/skill-recommend-wizard.html`。\n";
+    return md;
+  }
+
+  render();
+})();
+  </script>
+</body>
+</html>
