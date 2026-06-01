@@ -27,5 +27,3 @@ Other tools from the same author live under [reaidea.com](https://reaidea.com). 
 | **Skill Base (hosted)** | [skillbase.reaidea.com](https://skillbase.reaidea.com) | Public demo / reference deployment |
 | **Skill Base (source)** | [github.com/ginuim/skill-base](https://github.com/ginuim/skill-base) | Server, CLI skills, desktop client |
 | **reaidea.com** | [reaidea.com](https://reaidea.com) | Author homepage and future tools |
-
-More reaidea.com subdomains will be listed here when they ship. If you run Skill Base internally and build adjacent tools, a PR to add a one-line link is fine — keep it factual.
