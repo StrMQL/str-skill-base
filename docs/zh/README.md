@@ -14,22 +14,26 @@
 
 ## 为什么需要
 
-团队已经在写 Skill，但常见做法还是丢进 `.cursor/skills`、`.claude/skills` 或各项目仓库，靠 Git 同步。团队一大就出问题：
+很多团队已经攒了几十个、上百个 Skill，但它们还不是团队资产，只是散在聊天记录、个人电脑、项目目录里的 Markdown。有人从群里下载，有人复制同事的旧版本，有人直接改本地那份。时间一长，没人说得清哪份是最新、谁改过、哪些项目还在用旧版。
 
-- **IDE 目录各搞各的** — Cursor、Claude Code、Qoder 等落盘路径不一致。
-- **非研发被挡在外面** — PM、QA 不该为了用规范去开仓库权限。
-- **更新传不下去** — A 项目改了 Skill，B 项目不会自动跟上。
+有的团队改成用 Git 管，确实会好一些，至少有提交记录和集中仓库。但 Git 解决的是“文件放哪”，不是“团队怎么用”，很难解决不同Agent工具 skill 目录的碎片化问题。Skill 真正麻烦的地方在分发、安装、更新和权限：
 
-Skill Base 把 Skill 变成**可发布、可版本化、可安装**的团队资产。工程取舍见 [架构与设计](architecture.md)。
+- **分发靠人** — 发 zip、转 Markdown、让新人去问“最新版在哪”。
+- **版本靠猜** — `final`、`final2`、`最新版` 到处都是，本地改动没有记录。
+- **路径靠记** — Cursor、Claude Code、Qoder 等 skill 路径不一致，安装和更新全凭经验。
+- **权限卡业务同学** — PM、QA 也要用规范，但不该为了拿一个 Skill 去开仓库权限、学 Git 流程。
+- **更新断在本地/本项目** — 一个人修了 Skill，其他项目、其他同事还在用旧版，项目A改了目录下的 Skill 但没有同步到项目B。
+
+Skill Base 把 Skill 变成**可发布、可版本化、可安装**的团队资产。
 
 ## 能做什么
 
 | 能力 | 方式 |
 |------|------|
-| **发布** | Web 上传、`skb publish`、公开 GitHub 仓库导入 |
-| **安装 / 更新** | `skb install` / `skb update`，记住 IDE 路径与本地安装记录 |
-| **浏览** | Web 端搜索、版本、changelog、标签、收藏 |
-| **桌面端** | 原生客户端 — [下载](desktop.md) |
+| **发布** | 通过Web 上传、`skb publish`、公开 GitHub 仓库导入 Skill |
+| **安装 / 更新** | `skb install` / `skb update`，记住 IDE Skill 路径与本地安装记录 |
+| **浏览** | Web 端搜索、切换版本、changelog、标签、收藏 |
+| **桌面端** | 原生桌面客户端 — [下载](desktop.md) |
 | **可见性** | `public` / `private`；owner / collaborator / user 权限 |
 
 <p align="center">
@@ -49,7 +53,7 @@ npx skill-base -d ./skill-data -p 8000
 **CLI：**
 
 ```bash
-pnpm add -g skill-base-cli
+npm add -g skill-base-cli
 skb init -s http://localhost:8000
 skb search vue
 skb install some-skill --ide cursor
@@ -59,11 +63,11 @@ skb publish ./my-skill --changelog "首次发布"
 
 详见 [快速开始](getting-started.md) · CLI 全文：[cli.md](cli.md)
 
-## 设计原则（简）
+## 设计原则
 
 - **Skill 是分发单元** — 不是通用网盘，也不是 Agent 编排平台。
 - **SQLite + ZIP** — `skills.db` 做索引，每个版本一个归档包；备份 = 复制目录。
-- **单 Node 进程** — 不为这种规模上 Redis、消息队列或微服务。
+- **单 Node 进程** — 不为这种规模上 Redis、MySQL、消息队列或微服务。
 
 展开：[架构与设计](architecture.md)
 
@@ -72,7 +76,7 @@ skb publish ./my-skill --changelog "首次发布"
 | 文档 | 内容 |
 |------|------|
 | [快速开始](getting-started.md) | 启服、CLI、首次安装与发布 |
-| [使用说明](usage.md) | Web 端、GitHub 导入、OpenClaw、Skill 格式 |
+| [使用说明](usage.md) | Web 端、桌面端、GitHub 导入、OpenClaw、Skill 格式 |
 | [部署与备份](deployment.md) | Docker、PM2、参数、Session、备份 |
 | [架构与设计](architecture.md) | 数据模型与技术选型 |
 | [桌面客户端](desktop.md) | 下载与功能 |
@@ -85,7 +89,7 @@ skb publish ./my-skill --changelog "首次发布"
 
 ## Author's Lab
 
-同一维护者的其他项目，只挂稳定链接。
+作者的相关项目链接。
 
 | | |
 |--|--|

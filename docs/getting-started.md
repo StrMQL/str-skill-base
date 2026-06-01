@@ -24,12 +24,6 @@ npx skill-base --session-store sqlite
 
 Server flags and environment variables are documented in [Deployment](deployment.md).
 
-### WAL migration (upgrades from older releases)
-
-If you are upgrading from a release that wrote SQLite in WAL mode, Skill Base migrates the database on first start: it tries `sqlite3` on your `PATH`, then a bundled helper, then continues on the WASM driver without manual steps.
-
-Bundled migration helpers ship for macOS `arm64` / `x64`, Linux `x64`, and Windows `x64`. On other platforms, set `SKILL_BASE_SQLITE3_PATH` to a local `sqlite3` binary for the first startup.
-
 ## 2. Install the CLI
 
 ```bash
@@ -50,7 +44,7 @@ Login is only required for **publish** (and other write operations that need aut
 
 ```bash
 skb login
-skb whoami          # confirm token; --json / -q for scripts
+skb whoami          # confirm token; supports --json / -q
 ```
 
 ## 4. Install, update, publish
@@ -67,7 +61,7 @@ skb update team-vue-rules
 skb publish ./my-skill --changelog "API auth rules updated"
 ```
 
-Supported `--ide` targets include Cursor, Claude Code, GitHub Copilot, Windsurf, Qoder, QoderWork, and OpenCode.
+Supported `--ide` targets include Cursor, Claude Code, GitHub Copilot, Windsurf, Qoder, QoderWork, OpenCode, and others.
 
 Full command reference: [CLI](zh/cli.md) (中文).
 
@@ -81,7 +75,7 @@ Full command reference: [CLI](zh/cli.md) (中文).
 
 ## Next steps
 
-- [Usage](usage.md) — Web UI, GitHub import, OpenClaw prompts, Skill format
+- [Usage](usage.md) — Web UI, desktop app, GitHub import, OpenClaw prompts, Skill format
 - [Deployment](deployment.md) — Docker, PM2, backup, session storage
 - [Desktop](desktop.md) — Native client download and features
 - [Architecture](architecture.md) — Why the stack looks like this

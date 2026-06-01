@@ -4,13 +4,13 @@
 
 ## Core loop
 
-**Publish once, update many places locally.** `skb install` records which directories received a Skill, which IDE they target, and the installed version. When standards change:
+**Publish once, update many places locally.** `skb install` records which directories received a Skill, which IDE they target, and the installed version (no symlinks — Windows pitfalls). When a remote Skill updates, sync locally:
 
 ```bash
 skb update some-skill
 ```
 
-One install record updates in place; multiple records prompt you to choose. Engineers use the CLI; PMs and QA can use the web UI for search, versions, and downloads without touching Git.
+One install record updates in place; multiple records prompt you to choose. Engineers use the CLI; PMs and QA can use the web UI for search, versions, and downloads without touching Git. You can also manage Skills with the desktop app.
 
 ```bash
 skb search vue
@@ -64,13 +64,15 @@ The web UI supports:
 
 **Tags and favorites:** Super admins manage a global tag library under **Tag management** (`/admin/tags`). The home page **Tags** filter uses OR semantics. Owners and collaborators assign tags on the skill detail page. Inline previews use `/view` so browsing a ZIP does not inflate download counts.
 
+## Desktop
+
+The desktop app is for people who do not want to memorize commands and paths: connect to your Skill Base server, browse team Skills, favorite them, install into Cursor / Claude Code / Codex / Qoder agent folders, and check whether installed Skills need updates under **Local assets**. Downloads: [Desktop](desktop.md).
+
 ### GitHub import (server)
 
 - `GET /api/v1/skills/import/github/connectivity` — whether **the server** can reach GitHub (browser VPN does not help)
-- Optional `GITHUB_TOKEN` or `SKILL_BASE_GITHUB_TOKEN` for rate limits
 - `SKILL_BASE_GITHUB_IMPORT_MAX_ZIP_MB` (default `50`), `SKILL_BASE_GITHUB_CONNECTIVITY_TIMEOUT_MS` (default `8000`)
-- Private repos are not supported in this flow
-- If the derived skill id already exists and you lack permission, the UI suggests a `gh-owner-repo` style id
+- Private GitHub repos are not supported
 
 **CLI:** `skb import-github owner/repo` (alias `skb import`) with `--ref`, `--subpath`, `--target`, `--changelog`, `--dry-run`.
 
@@ -118,7 +120,7 @@ Typical loop after ClawHub install:
 3. **Login** — search/install usually need no login; **publish** needs `skb login` (browser flow or `/cli-code` → five-minute code → long-lived PAT).
 4. **Day-to-day** — `skb search`, `install`, `update`, `publish` with `--changelog "..."`.
 
-Global CLI: `pnpm add -g skill-base-cli` or `npx skill-base-cli`.
+Global CLI: `npm install -g skill-base-cli` or `npx skill-base-cli`.
 
 ## Cappy
 

@@ -24,12 +24,6 @@ npx skill-base --session-store sqlite
 
 启动参数与环境变量见 [部署与备份](deployment.md)。
 
-### WAL 迁移（从旧版本升级）
-
-若旧版本曾把数据库运行在 WAL 模式，首次启动会自动迁移：先尝试 `PATH` 中的 `sqlite3`，再回退随包 helper，最后切到 WASM 驱动，无需手工命令。
-
-随包 helper 支持 macOS `arm64` / `x64`、Linux `x64`、Windows `x64`。其他平台升级旧 WAL 库时，首次启动前设置 `SKILL_BASE_SQLITE3_PATH` 指向本机 `sqlite3`。
-
 ## 2. 安装 CLI
 
 ```bash
@@ -50,7 +44,7 @@ skb init -s http://your-team-server
 
 ```bash
 skb login
-skb whoami          # 确认 token；脚本可用 --json / -q
+skb whoami          # 确认 token；支持 --json / -q 参数
 ```
 
 ## 4. 安装、更新、发布
@@ -67,7 +61,7 @@ skb update team-vue-rules
 skb publish ./my-skill --changelog "补充接口鉴权规范"
 ```
 
-`--ide` 支持 Cursor、Claude Code、GitHub Copilot、Windsurf、Qoder、QoderWork、OpenCode。
+`--ide` 支持 Cursor、Claude Code、GitHub Copilot、Windsurf、Qoder、QoderWork、OpenCode 等。
 
 完整命令：[CLI](cli.md)
 

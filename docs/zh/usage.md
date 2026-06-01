@@ -4,13 +4,13 @@
 
 ## 核心闭环
 
-**一处发布，本地多处更新。** `skb install` 会记录 Skill 装到了哪些目录、对应哪个 IDE、当前版本。规范更新后：
+**一处发布，本地多处更新。** `skb install` 会记录 Skill 装到了哪些目录、对应哪个 IDE、当前版本（目前没有用软链接的方式，是考虑Windows 上会有坑）。当远程 Skill 更新后本地同步时：
 
 ```bash
 skb update some-skill
 ```
 
-只有一条安装记录就直接更新；多条会列出来让你选。研发用 CLI；PM、QA 可在 Web 端搜索、看版本、下载，不必碰 Git。
+只有一条安装记录就直接更新；多条会列出来让你选。研发用 CLI；PM、QA 可在 Web 端搜索、看版本、下载，不必碰 Git。也可以使用 Desktop 工具管理
 
 ```bash
 skb search vue
@@ -64,13 +64,15 @@ Web 端支持：
 
 **标签与收藏：** 超级管理员在 **标签管理**（`/admin/tags`）维护全局标签库；首页 **标签** 筛选为多选「或」语义；所有者与协作者在详情页打标。内联预览走 `/view`，浏览 ZIP 不计入下载次数。
 
+## 桌面端
+
+桌面端适合不想记命令和路径的场景：连接 Skill Base 服务后，可浏览团队 Skill、收藏、安装到 Cursor / Claude Code / Codex / Qoder 等 Agent 目录，并在「本地资产」里查看已安装 Skill 是否需要更新。安装包见 [桌面客户端](desktop.md)。
+
 ### GitHub 导入（服务端）
 
 - `GET /api/v1/skills/import/github/connectivity` — **服务端**能否访问 GitHub（浏览器 VPN 不能代替）
-- 可选 `GITHUB_TOKEN` / `SKILL_BASE_GITHUB_TOKEN` 提高限额
 - `SKILL_BASE_GITHUB_IMPORT_MAX_ZIP_MB`（默认 `50`）、`SKILL_BASE_GITHUB_CONNECTIVITY_TIMEOUT_MS`（默认 `8000`）
-- 不支持私有仓库
-- 默认 skill id 已存在且无权限时，界面建议 `gh-owner-repo` 风格 id
+- 不支持私有 Github 仓库
 
 **CLI：** `skb import-github owner/repo`（别名 `skb import`），支持 `--ref`、`--subpath`、`--target`、`--changelog`、`--dry-run`。
 
@@ -118,7 +120,7 @@ Web 端支持：
 3. **登录** — search/install 通常不需登录；**publish** 需要 `skb login`（浏览器或 `/cli-code` → 五分钟码 → 长期 PAT）。
 4. **日常** — `skb search` / `install` / `update` / `publish`，发布时带 `--changelog "..."`。
 
-本机也可 `pnpm add -g skill-base-cli` 或 `npx skill-base-cli`。
+本机也可 `npm install -g skill-base-cli` 或 `npx skill-base-cli`。
 
 ## Cappy
 

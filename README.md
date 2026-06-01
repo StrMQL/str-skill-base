@@ -14,22 +14,26 @@
 
 ## Why
 
-Teams already write Skills, but they often live in `.cursor/skills`, `.claude/skills`, and repo-specific paths synced by Git. That breaks down when:
+Many teams already have dozens or hundreds of Skills, but they are not team assets yet — just Markdown scattered across chat logs, personal machines, and project folders. People download from group chats, copy a colleague's old copy, or edit their local file directly. Over time, no one can say which copy is current, who changed what, or which projects still run an old version.
 
-- **IDEs disagree on layout** — each assistant expects different folders.
-- **Non-engineers need standards too** — PM/QA should not need repo access for team rules.
-- **Updates do not propagate** — project A updates a Skill; project B drifts until someone copies files again.
+Some teams move Skills into Git, which helps: you get commits and a single repo. But Git answers "where do files live?", not "how does the team use them?" It does not fix fragmented Skill paths across Cursor, Claude Code, Qoder, and other agents. The real pain is distribution, install, updates, and access:
 
-Skill Base makes Skills **publishable, versioned, and installable** team assets. See [Architecture](docs/architecture.md) for the engineering rationale.
+- **Distribution by hand** — zip files, pasted Markdown, new hires asking "where is the latest?"
+- **Versions by guesswork** — `final`, `final2`, `latest` everywhere; local edits untracked
+- **Paths by memory** — Cursor, Claude Code, Qoder, etc. use different Skill folders; install and update depend on tribal knowledge
+- **Access blocks PM/QA** — they need the same standards but should not need repo access or Git workflows for one Skill
+- **Updates stop at one machine or project** — one person fixes a Skill; other projects and teammates keep the old copy
+
+Skill Base turns Skills into **publishable, versioned, and installable** team assets.
 
 ## What it does
 
 | Capability | How |
 |------------|-----|
-| **Publish** | Web upload, `skb publish`, or GitHub import (public repos) |
-| **Install / update** | `skb install` / `skb update` with IDE-aware paths and local install tracking |
-| **Browse** | Web UI for search, versions, changelogs, tags, favorites |
-| **Desktop** | Native client — [download](docs/desktop.md) |
+| **Publish** | Web upload, `skb publish`, or GitHub import from public repos |
+| **Install / update** | `skb install` / `skb update` with IDE Skill paths and local install tracking |
+| **Browse** | Web UI for search, version switching, changelogs, tags, favorites |
+| **Desktop** | Native desktop client — [download](docs/desktop.md) |
 | **Visibility** | `public` / `private` skills; owner / collaborator / user permissions |
 
 <p align="center">
@@ -49,7 +53,7 @@ Open the URL, complete first-time setup, create an admin account.
 **CLI:**
 
 ```bash
-pnpm add -g skill-base-cli
+npm add -g skill-base-cli
 skb init -s http://localhost:8000
 skb search vue
 skb install some-skill --ide cursor
@@ -59,11 +63,11 @@ skb publish ./my-skill --changelog "First release"
 
 Details: [Getting Started](docs/getting-started.md) · CLI: [docs/zh/cli.md](docs/zh/cli.md) (中文)
 
-## Design philosophy (short)
+## Design philosophy
 
 - **Skills are the unit** — not a generic file dump or agent orchestrator.
 - **SQLite + ZIP on disk** — `skills.db` indexes; each release is a versioned archive. Backup = copy one directory.
-- **One Node process** — no Redis, no queue, no microservice mesh for a problem this size.
+- **One Node process** — no Redis, MySQL, queue, or microservice mesh for a problem this size.
 
 Longer write-up: [Architecture](docs/architecture.md).
 
@@ -72,7 +76,7 @@ Longer write-up: [Architecture](docs/architecture.md).
 | Doc | Contents |
 |-----|----------|
 | [Getting Started](docs/getting-started.md) | Server, CLI, first install/publish |
-| [Usage](docs/usage.md) | Web UI, GitHub import, OpenClaw prompts, Skill format |
+| [Usage](docs/usage.md) | Web UI, desktop app, GitHub import, OpenClaw prompts, Skill format |
 | [Deployment](docs/deployment.md) | Docker, PM2, flags, sessions, backup |
 | [Architecture](docs/architecture.md) | Data model and stack choices |
 | [Desktop](docs/desktop.md) | Download and features |
@@ -86,7 +90,7 @@ Longer write-up: [Architecture](docs/architecture.md).
 
 ## Author's Lab
 
-Side projects from the same maintainer. Stable links only — no filler.
+Related projects from the author.
 
 | | |
 |--|--|
