@@ -27,5 +27,3 @@ Skill Base 由**兼职独立开发者**作为业余项目维护。
 | **Skill Base（在线）** | [skillbase.reaidea.com](https://skillbase.reaidea.com) | 公开演示 / 参考部署 |
 | **Skill Base（源码）** | [github.com/ginuim/skill-base](https://github.com/ginuim/skill-base) | 服务端、CLI Skill、桌面端 |
 | **reaidea.com** | [reaidea.com](https://reaidea.com) | 作者主页与后续工具 |
-
-后续 reaidea.com 子域名会在这里补一行。你若在内网跑 Skill Base 并做了相邻工具，PR 加一条 factual 链接即可。

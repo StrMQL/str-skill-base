@@ -1,6 +1,6 @@
 # Skill Base CLI 使用说明
 
-[English](../getting-started.md) | **中文**
+[English](../cli.md) | **中文**
 
 `skb` 是 Skill Base 的官方命令行客户端，用来搜索、安装、更新、发布团队 Skill。
 

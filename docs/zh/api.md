@@ -1,6 +1,6 @@
 # Skill Base API 文档
 
-[English](../deployment.md) | **中文**
+[English](../api.md) | **中文**
 
 ## 基础信息
 
