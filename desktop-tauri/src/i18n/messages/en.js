@@ -58,6 +58,15 @@ export default {
     notMounted: 'Not mounted',
     revealHint: 'Reveal in Finder / file manager'
   },
+  version: {
+    latest: ' (latest)',
+    details: 'Version details',
+    uploader: 'Uploader',
+    changelog: 'Changelog',
+    noChangelog: 'No changelog',
+    loading: 'Loading versions…',
+    pick: 'Select version'
+  },
   install: {
     title: 'Install / {name}',
     version: 'Version',
@@ -109,6 +118,7 @@ export default {
     connection: 'Connection',
     serverUrl: 'Server base URL',
     save: 'Save',
+    saving: 'Saving...',
     openLogin: 'Open CLI login page in browser',
     verificationCode: '8-character code',
     codePlaceholder: 'e.g. AB12-CD34',

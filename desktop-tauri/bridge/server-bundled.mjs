@@ -3,6 +3,7 @@
  */
 import http from 'node:http';
 import path from 'node:path';
+import fs from 'node:fs';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { loadDesktopCliStatic } from '../../cli/lib/desktop-cli-static.mjs';
@@ -14,6 +15,17 @@ import {
 const execFileAsync = promisify(execFile);
 
 let projectRoot = '';
+
+function appendLog(message) {
+  const logPath = process.env.SKB_DESKTOP_LOG;
+  if (!logPath) return;
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${message}\n`);
+  } catch {
+    // Logging must never break the bridge.
+  }
+}
 
 async function openExternal(url) {
   if (process.env.SKB_BRIDGE_NO_OPEN === '1') return;
@@ -47,6 +59,7 @@ function readBody(req) {
 }
 
 async function main() {
+  appendLog(`bridge main starting platform=${process.platform} mode=bundled`);
   const cli = loadDesktopCliStatic();
   const { handlers, getSavedProjectRoot } = registerDesktopHandlers(cli, '', {
     pickDirectory: async () => {
@@ -60,6 +73,7 @@ async function main() {
     }
   });
   projectRoot = getSavedProjectRoot();
+  appendLog(`bridge projectRoot=${projectRoot}`);
 
   const server = http.createServer(async (req, res) => {
     if (req.method !== 'POST' || req.url !== '/invoke') {
@@ -78,9 +92,11 @@ async function main() {
     }
 
     const { channel, args = [] } = payload;
+    appendLog(`ipc start channel=${channel}`);
     if (!DESKTOP_IPC_CHANNELS.includes(channel)) {
       res.writeHead(400, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: `invalid channel: ${channel}` }));
+      appendLog(`ipc invalid channel=${channel}`);
       return;
     }
 
@@ -91,15 +107,19 @@ async function main() {
       const result = await handler(...argList);
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: true, result: result ?? null }));
+      const summary = Array.isArray(result) ? `array(${result.length})` : typeof result;
+      appendLog(`ipc ok channel=${channel} result=${summary}`);
     } catch (err) {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ ok: false, error: err?.message || String(err) }));
+      appendLog(`ipc error channel=${channel}: ${err?.stack || err}`);
     }
   });
 
   server.listen(0, '127.0.0.1', () => {
     const addr = server.address();
     const port = typeof addr === 'object' && addr ? addr.port : 0;
+    appendLog(`bridge listening port=${port}`);
     process.stdout.write(`BRIDGE_READY port=${port}\n`);
   });
 
@@ -111,6 +131,7 @@ async function main() {
 }
 
 main().catch((err) => {
+  appendLog(`bridge fatal: ${err?.stack || err}`);
   process.stderr.write(`${err?.stack || err}\n`);
   process.exit(1);
 });

@@ -100,6 +100,10 @@ cd src-tauri && cargo check
 | `bridge exited before ready` | 确认 `../cli` 已 `pnpm install`；检查 `node bridge/server.mjs`  stderr |
 | `bundled Node not found` | 先 `pnpm prepare:resources` 或完整 `pnpm build` |
 | `bridge script not found` | Release 需 `src-tauri/resources/bridge/server.mjs`；dev 用 `bridge/server.mjs` |
+| Windows 安装提示无法写入 `resources\\node\\node.exe` | 旧版运行中的 bridge 会锁住安装目录里的 Node。先完全退出 Skill Base（必要时结束残留 `node.exe`）再点重试，不要点“忽略”；新版安装后运行时会改用缓存目录里的 Node 副本，避免后续覆盖安装继续锁安装资源 |
+| Windows 打开后出现 `node.exe` CMD 窗口 | Rust 启动 bridge 时应带 `CREATE_NO_WINDOW`；重新构建安装包后验证 |
+| Windows 打包版无错误信息 | 查看 Tauri app log 目录下的 `desktop.log`（Windows 通常在 `%LOCALAPPDATA%\\com.reaidea.skillbase\\logs\\desktop.log`）；bridge 非 JSON 响应会记录 HTTP 状态码和响应体片段 |
+| 日志出现 `invalid bridge response ... Content Filter - Access Denied` | 本机 bridge IPC 被系统代理/内容过滤器劫持。Rust 调用 `127.0.0.1` bridge 时必须禁用代理；更新到包含该修复的版本后再验证 |
 | IPC 调用无响应 | DevTools 看 `skb_invoke` 错误；确认 bridge 子进程已输出 `BRIDGE_READY` |
 | 对话框/打开浏览器无效 | 5 个原生 channel 由 Rust 处理，见 [IPC.md](./IPC.md) |
 | 搜索/安装失败 | 检查 `config:get.baseUrl` 与 Skill Base 服务是否可达 |

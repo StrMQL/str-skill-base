@@ -2,6 +2,7 @@
 import { ref, computed, inject, onMounted, onUnmounted, watch } from 'vue';
 import { useI18n } from './i18n/index.js';
 import { useTheme } from './composables/useTheme.js';
+import VersionSelect from './components/VersionSelect.vue';
 
 const { t, locale, setLocale } = useI18n();
 const { preference: themePreference, setPreference: setThemePreference } = useTheme();
@@ -37,13 +38,16 @@ const settingsTab = ref('general');
 const registryUrl = ref('');
 const verificationCode = ref('');
 const patReady = ref(false);
+const isSavingServer = ref(false);
 const isExchangingPat = ref(false);
 const isTestingConnection = ref(false);
 
 // Install modal
 const installModalOpen = ref(false);
 const installSkill = ref(null);
-const installVersion = ref('latest');
+const installVersion = ref('');
+const installVersions = ref([]);
+const installVersionsLoading = ref(false);
 const installTargetTab = ref('global');
 const selectedGlobalTargetIds = ref([]);
 const selectedProjectTargetIds = ref([]);
@@ -84,10 +88,6 @@ const currentTabLabel = computed(() => {
 });
 
 const revealPathHint = computed(() => t('installed.revealHint'));
-
-const updateSelectedVersionDetail = computed(() =>
-  updateVersions.value.find((v) => v.version === updateSelectedVersion.value) || null
-);
 
 const canOpenUpdateVersionDiff = computed(() => {
   const installed = updateSkill.value?.version;
@@ -155,12 +155,6 @@ function formatPath(p, maxLen = PATH_DISPLAY_MAX) {
   if (display.length <= maxLen) return display;
   const edge = Math.floor((maxLen - 1) / 2);
   return `${display.slice(0, edge)}…${display.slice(-edge)}`;
-}
-
-function versionUploaderLabel(version) {
-  const u = version?.uploader;
-  if (!u) return t('common.unknown');
-  return u.name || u.username || t('common.unknown');
 }
 
 /** Pick version_a (older) and version_b (newer) for the diff page */
@@ -368,7 +362,9 @@ async function pickProjectRoot() {
 
 async function openInstallModal(skill) {
   installSkill.value = skill;
-  installVersion.value = skill.latest_version || skill.latest || 'latest';
+  installVersion.value = '';
+  installVersions.value = [];
+  installVersionsLoading.value = true;
   installOverwrite.value = false;
   installAcceptNested.value = false;
   installNestedWarn.value = false;
@@ -380,9 +376,20 @@ async function openInstallModal(skill) {
   agentTargetFilter.value = '';
   selectedGlobalTargetIds.value = [];
   selectedProjectTargetIds.value = [];
+  installModalOpen.value = true;
   await loadGlobalTargets();
   await loadProjectTargetTemplates();
-  installModalOpen.value = true;
+  try {
+    const skillId = skill.id || skill.skillId;
+    installVersions.value = await window.skb.invoke('skills:getVersions', skillId);
+    installVersion.value =
+      installVersions.value[0]?.version || skill.latest_version || skill.latest || '';
+  } catch (e) {
+    showToast(t('toast.versionsLoadFailed', { message: e.message }));
+    installModalOpen.value = false;
+  } finally {
+    installVersionsLoading.value = false;
+  }
 }
 
 async function pickCustomInstallDir() {
@@ -422,7 +429,7 @@ watch(installTargetTab, async (tab) => {
 });
 
 async function confirmInstall() {
-  if (!installSkill.value || !canConfirmInstall.value) return;
+  if (!installSkill.value || !installVersion.value || !canConfirmInstall.value) return;
   installing.value = true;
   try {
     const skillId = installSkill.value.id || installSkill.value.skillId;
@@ -525,12 +532,15 @@ async function updateAll() {
 }
 
 async function saveServer() {
+  isSavingServer.value = true;
   try {
     await window.skb.invoke('config:setServer', registryUrl.value);
     await loadConfig();
     showToast(t('toast.serverSaved'));
   } catch (e) {
-    showToast(t('toast.saveFailed', { message: e.message }));
+    showToast(t('toast.saveFailed', { message: errMessage(e) }));
+  } finally {
+    isSavingServer.value = false;
   }
 }
 
@@ -1044,7 +1054,12 @@ onUnmounted(() => {
         </div>
         <div class="modal-body">
           <label class="field-label">{{ t('install.version') }}</label>
-          <input v-model="installVersion" type="text" placeholder="latest" class="font-mono" />
+          <VersionSelect
+            v-model="installVersion"
+            :versions="installVersions"
+            :loading="installVersionsLoading"
+            :disabled="installing"
+          />
 
           <label class="field-label" style="margin-top: 1rem">{{ t('install.targets') }}</label>
 
@@ -1262,7 +1277,11 @@ onUnmounted(() => {
         </div>
         <div class="modal-footer">
           <button class="btn-ghost" @click="installModalOpen = false">{{ t('install.cancel') }}</button>
-          <button class="btn-primary" :disabled="installing || !canConfirmInstall" @click="confirmInstall">
+          <button
+            class="btn-primary"
+            :disabled="installing || installVersionsLoading || !installVersion || !canConfirmInstall"
+            @click="confirmInstall"
+          >
             <i v-if="installing" class="fa-solid fa-circle-notch fa-spin"></i>
             {{ t('install.confirm') }}
           </button>
@@ -1284,23 +1303,8 @@ onUnmounted(() => {
         </div>
         <div class="modal-body">
           <label class="field-label">{{ t('update.version') }}</label>
-          <select v-model="updateSelectedVersion">
-            <option v-for="(v, i) in updateVersions" :key="v.version" :value="v.version">
-              {{ v.version }}{{ i === 0 ? t('update.latest') : '' }}
-            </option>
-          </select>
-
-          <div v-if="updateSelectedVersionDetail" class="version-detail">
-            <p class="version-detail-row">
-              <span class="version-detail-label">{{ t('update.uploader') }}</span>
-              <span class="version-detail-value font-mono">
-                @{{ versionUploaderLabel(updateSelectedVersionDetail) }}
-              </span>
-            </p>
-            <p class="version-detail-changelog">
-              {{ updateSelectedVersionDetail.changelog || t('update.noChangelog') }}
-            </p>
-            <div class="version-detail-actions">
+          <VersionSelect v-model="updateSelectedVersion" :versions="updateVersions" :disabled="updating">
+            <template #actions>
               <button type="button" class="btn-ghost version-detail-btn" @click="openUpdateVersionOnline('detail')">
                 <i class="fa-solid fa-arrow-up-right-from-square"></i>
                 {{ t('update.viewOnline') }}
@@ -1314,8 +1318,8 @@ onUnmounted(() => {
                 <i class="fa-solid fa-code-compare"></i>
                 {{ t('update.compareInstalled') }}
               </button>
-            </div>
-          </div>
+            </template>
+          </VersionSelect>
 
           <div v-if="updateInstallPaths.length > 1" style="margin-top: 1rem">
             <label class="field-label">{{ t('update.pickDirs') }}</label>
@@ -1401,7 +1405,10 @@ onUnmounted(() => {
             <label class="field-label">{{ t('settings.serverUrl') }}</label>
             <div class="field-row">
               <input v-model="registryUrl" type="text" class="font-mono" />
-              <button class="btn-ghost" @click="saveServer">{{ t('settings.save') }}</button>
+              <button class="btn-ghost" :disabled="isSavingServer" @click="saveServer">
+                <i v-if="isSavingServer" class="fa-solid fa-circle-notch fa-spin"></i>
+                {{ isSavingServer ? t('settings.saving') : t('settings.save') }}
+              </button>
             </div>
 
             <a href="#" class="login-link" @click.prevent="openLoginPage">
@@ -1523,6 +1530,7 @@ onUnmounted(() => {
 .app-layout .content-toolbar,
 .app-layout .content-area,
 .app-layout .tag-filter-dropdown,
+.app-layout .version-select,
 .app-layout .modal-overlay,
 .app-layout .modal-panel,
 .app-layout .toast {
@@ -2377,63 +2385,6 @@ button.dir-tag {
   font-size: 0.75rem;
   color: var(--color-base-400);
   font-family: ui-monospace, monospace;
-}
-
-.version-detail {
-  margin-top: 0.75rem;
-  padding: 0.75rem 1rem;
-  border-radius: 0.5rem;
-  border: 1px solid var(--color-base-800);
-  background: rgba(var(--color-base-950-rgb), 0.5);
-}
-
-.version-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.5rem;
-  font-size: 0.8125rem;
-}
-
-.version-detail-label {
-  color: var(--color-base-400);
-  flex-shrink: 0;
-}
-
-.version-detail-value {
-  color: var(--color-fg-muted);
-}
-
-.version-detail-changelog {
-  margin: 0;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  color: var(--color-fg);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.version-detail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-base-800);
-}
-
-.version-detail-btn {
-  font-size: 0.8125rem;
-  padding: 0.375rem 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  color: var(--color-accent-light);
-}
-
-.version-detail-btn:hover {
-  color: var(--color-accent-lighter);
-  border-color: var(--color-accent);
 }
 
 .install-btn {

@@ -6,6 +6,17 @@ import { parseSkillMd, displayNameAndDescriptionFromParsed } from './skill-md.js
 
 export { DESKTOP_IPC_CHANNELS };
 
+function appendDesktopLog(message) {
+  const logPath = process.env.SKB_DESKTOP_LOG;
+  if (!logPath) return;
+  try {
+    fs.mkdirSync(path.dirname(logPath), { recursive: true });
+    fs.appendFileSync(logPath, `[${new Date().toISOString()}] ${message}\n`);
+  } catch {
+    // Logging must never break desktop IPC.
+  }
+}
+
 /**
  * @param {object} cli merged desktop CLI module exports
  * @param {string} cliLibRoot reserved (esbuild bundle uses static cli imports)
@@ -176,6 +187,7 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       const normalized = String(url || '').replace(/\/+$/, '');
       if (!normalized) throw new Error('Server URL required');
       cli.saveConfig({ baseUrl: normalized });
+      appendDesktopLog(`config saved baseUrl=${normalized}`);
       return { baseUrl: normalized };
     },
 
@@ -315,8 +327,10 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
     },
 
     'skills:getInstalled': async () => {
+      const beforePrune = cli.listInstalledSkills();
       cli.pruneAllMissingInstalls();
       const rows = cli.listInstalledSkills();
+      appendDesktopLog(`installed records before=${beforePrune.length} after=${rows.length}`);
       const client = cli.createClient();
       const enriched = [];
 
@@ -328,6 +342,9 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
           // offline or skill removed from server
         }
         const firstPath = row.installs[0]?.installPath;
+        appendDesktopLog(
+          `installed skill=${row.skillId} installs=${row.installs.length} firstPath=${firstPath || ''} exists=${firstPath ? fs.existsSync(firstPath) : false}`
+        );
         const meta = firstPath
           ? await readLocalSkillMeta(firstPath)
           : { name: row.skillId, description: '' };

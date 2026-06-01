@@ -58,6 +58,15 @@ export default {
     notMounted: '未挂载',
     revealHint: '在 Finder / 资源管理器中打开'
   },
+  version: {
+    latest: '（最新）',
+    details: '版本详情',
+    uploader: '提交人',
+    changelog: '更新说明',
+    noChangelog: '暂无 changelog',
+    loading: '加载版本…',
+    pick: '选择版本'
+  },
   install: {
     title: '安装 / {name}',
     version: '版本',
@@ -108,6 +117,7 @@ export default {
     connection: '连接',
     serverUrl: 'Server 根地址',
     save: '保存',
+    saving: '保存中...',
     openLogin: '在浏览器打开 CLI 登录页',
     verificationCode: '8 位验证码',
     codePlaceholder: '如 AB12-CD34',
