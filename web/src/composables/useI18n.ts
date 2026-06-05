@@ -77,7 +77,7 @@ const zh: Record<string, string> = {
   'setup.errFailed': '创建失败，请重试',
 
   // Index page
-  'index.searchPlaceholder': '搜索 Skill...',
+  'index.searchPlaceholder': '从 {count} 个 skill 里搜索',
   'index.fabTitle': '发布新版本',
   'index.noSkills': '暂无 Skill，去发布第一个吧',
   'index.noResults': '未找到包含 "{q}" 的 Skill',
@@ -586,7 +586,7 @@ const en: Record<string, string> = {
   'setup.errFailed': 'Setup failed, please try again',
 
   // Index page
-  'index.searchPlaceholder': 'Search skills...',
+  'index.searchPlaceholder': 'Search from {count} skills',
   'index.fabTitle': 'Publish New Version',
   'index.noSkills': 'No skills yet, publish the first one',
   'index.noResults': 'No skills found for "{q}"',

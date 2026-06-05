@@ -16,7 +16,7 @@
         <input
           type="search"
           id="searchInput"
-          :placeholder="`&quot;${t('index.searchPlaceholder')}&quot;`"
+          :placeholder="`&quot;${searchPlaceholder}&quot;`"
           autocomplete="off"
           v-model="searchQuery"
         >
@@ -186,11 +186,9 @@
             <div class="skill-list-title-row">
               <h3 class="skill-list-name">{{ skill.name }}</h3>
               <span v-if="skill.visibility === 'private'" class="skill-visibility-badge">PRIVATE</span>
+              <span v-for="tag in skill.tags || []" :key="tag.id" class="skill-list-tag">{{ tag.name }}</span>
             </div>
             <p class="skill-list-desc">{{ truncateDescription(skill.description, 180) }}</p>
-            <div v-if="skill.tags?.length" class="skill-list-tags">
-              <span v-for="tag in skill.tags" :key="tag.id" class="skill-list-tag">{{ tag.name }}</span>
-            </div>
           </div>
           <div class="skill-list-aside">
             <span class="skill-list-owner">
@@ -316,6 +314,10 @@ const tagSkillCounts = computed(() => {
   }
   return counts
 })
+
+const searchPlaceholder = computed(() =>
+  t('index.searchPlaceholder', { count: skillsStore.skills.length })
+)
 
 const filteredSkills = computed(() => {
   let result = skillsStore.skills
@@ -742,7 +744,7 @@ onUnmounted(() => {
 .skill-list-name {
   margin: 0;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9375rem;
+  font-size: 1.1rem;
   font-weight: 600;
   color: var(--color-fg-strong);
   display: flex;
@@ -769,16 +771,10 @@ onUnmounted(() => {
   overflow: hidden;
 }
 
-.skill-list-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-top: 0.4rem;
-}
-
 .skill-list-tag {
   display: inline-flex;
   align-items: center;
+  flex-shrink: 0;
   padding: 0.1rem 0.4rem;
   border-radius: 9999px;
   border: 1px solid var(--color-base-800);
@@ -787,6 +783,12 @@ onUnmounted(() => {
   font-size: 0.625rem;
   font-family: 'JetBrains Mono', monospace;
   line-height: 1.4;
+}
+
+.skill-list-title-row .skill-visibility-badge {
+  padding: 0.1rem 0.4rem;
+  line-height: 1.4;
+  flex-shrink: 0;
 }
 
 .skill-list-aside {

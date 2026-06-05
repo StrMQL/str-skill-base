@@ -78,7 +78,7 @@
             </div>
           </div>
 
-          <router-link v-else to="/login" class="btn btn-primary btn-sm">{{ t('nav.login') }}</router-link>
+          <router-link v-else to="/login" class="sb-nav-login-btn">{{ t('nav.login') }}</router-link>
         </div>
       </div>
     </div>
@@ -652,37 +652,31 @@ onUnmounted(() => {
   margin: 4px 0;
 }
 
-.btn {
+.sb-nav-login-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  font-size: 0.875rem;
+  padding: 0.375rem 0.75rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
   font-weight: 500;
   border-radius: 0.5rem;
   text-decoration: none;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
   cursor: pointer;
-  border: none;
-}
-
-.btn-primary {
   background-color: transparent;
   border: 1px solid var(--color-neon-500);
   color: var(--color-neon-400);
   box-shadow: 0 0 15px rgba(var(--color-neon-rgb), 0.12);
+  white-space: nowrap;
 }
 
-.btn-primary:hover {
+.sb-nav-login-btn:hover,
+.sb-nav-login-btn:focus-visible {
   background-color: rgba(var(--color-neon-rgb), 0.12);
   box-shadow: 0 0 20px rgba(var(--color-neon-rgb), 0.22);
-  color: var(--color-fg-strong);
-}
-
-.btn-sm {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.8125rem;
+  color: var(--color-neon-500);
+  outline: none;
 }
 
 @media (max-width: 767px) {
