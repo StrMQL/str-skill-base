@@ -16,11 +16,32 @@
         <div class="w-20 h-20 mx-auto mb-6 rounded-full bg-base-800 flex items-center justify-center">
           <Frown class="w-10 h-10 text-base-600" :stroke-width="2" aria-hidden="true" />
         </div>
-        <h3 class="text-xl font-semibold text-fg-strong mb-2">{{ t('skill.notFound') }}</h3>
-        <p class="text-base-400 mb-6">{{ t('skill.notFoundDesc') }}</p>
-        <router-link to="/" class="btn-primary px-6 py-3 rounded-lg">
-          {{ t('skill.backToHome') }}
-        </router-link>
+        <template v-if="showSessionExpired">
+          <h3 class="text-xl font-semibold text-fg-strong mb-2">{{ t('skill.sessionExpired') }}</h3>
+          <p class="text-base-400 mb-6">{{ t('skill.sessionExpiredDesc') }}</p>
+          <router-link :to="loginRedirect" class="btn-primary px-6 py-3 rounded-lg">
+            {{ t('nav.login') }}
+          </router-link>
+        </template>
+        <template v-else-if="showAuthHint">
+          <h3 class="text-xl font-semibold text-fg-strong mb-2">{{ t('skill.authRequired') }}</h3>
+          <p class="text-base-400 mb-6">{{ t('skill.authRequiredDesc') }}</p>
+          <div class="flex flex-wrap items-center justify-center gap-3">
+            <router-link :to="loginRedirect" class="btn-primary px-6 py-3 rounded-lg">
+              {{ t('nav.login') }}
+            </router-link>
+            <router-link to="/" class="btn-secondary px-6 py-3 rounded-lg">
+              {{ t('skill.backToHome') }}
+            </router-link>
+          </div>
+        </template>
+        <template v-else>
+          <h3 class="text-xl font-semibold text-fg-strong mb-2">{{ t('skill.notFound') }}</h3>
+          <p class="text-base-400 mb-6">{{ t('skill.notFoundDesc') }}</p>
+          <router-link to="/" class="btn-primary px-6 py-3 rounded-lg">
+            {{ t('skill.backToHome') }}
+          </router-link>
+        </template>
       </div>
 
       <!-- Skill Detail -->
@@ -35,7 +56,7 @@
         </div>
 
         <!-- Skill Info Card -->
-        <div id="skill-info" class="card p-6 mb-6 relative overflow-hidden">
+        <div id="skill-info" class="card p-6 mb-6 relative">
           <div class="absolute top-0 right-0 bg-base-800 text-base-400 text-[10px] font-mono px-2 py-1 rounded-bl-lg opacity-50 select-none">ID: {{ skill.id.toString().substring(0, 8) }}</div>
           <h1 class="text-3xl font-bold text-fg-strong mb-3 flex items-center gap-3">
             <span class="text-neon-400 font-mono font-normal opacity-70">&gt;</span>
@@ -102,15 +123,35 @@
               <ChevronDown class="w-4 h-4 absolute right-4 top-3 pointer-events-none text-base-400" :stroke-width="2" aria-hidden="true" />
             </div>
             <div class="flex flex-col sm:flex-row gap-3 w-full sm:w-auto mt-4 sm:mt-0 flex-shrink-0">
-              <button
-                v-if="installCliCommand"
-                type="button"
-                class="inline-flex items-center justify-center gap-2 text-sm font-mono px-4 py-2.5 rounded-lg border border-base-800 bg-base-950 text-base-300 hover:text-neon-400 hover:border-neon-500/40 hover:bg-neon-400/5 transition-colors text-left max-w-full min-w-0 break-all w-full sm:w-auto sm:max-w-md"
-                @click="copyInstallCommand"
-              >
-                <Copy class="w-4 h-4 shrink-0 opacity-70" :stroke-width="2" aria-hidden="true" />
-                <span class="min-w-0 text-left">{{ installCliCommand }}</span>
-              </button>
+              <div v-if="installCliCommand" class="relative inline-flex items-stretch w-full sm:w-auto min-w-0 cli-install-help-group">
+                <button
+                  type="button"
+                  class="inline-flex flex-1 items-center justify-center gap-2 text-sm font-mono px-4 py-2.5 rounded-l-lg border border-base-800 bg-base-950 text-base-300 hover:text-neon-400 hover:border-neon-500/40 hover:bg-neon-400/5 transition-colors text-left max-w-full min-w-0 break-all w-full sm:w-auto sm:max-w-md cursor-pointer"
+                  :title="t('skill.copyInstallHint')"
+                  @click="copyInstallCommand"
+                >
+                  <Copy class="w-4 h-4 shrink-0 opacity-70" :stroke-width="2" aria-hidden="true" />
+                  <span class="min-w-0 text-left">{{ installCliCommand }}</span>
+                </button>
+                <button
+                  type="button"
+                  class="inline-flex items-center justify-center shrink-0 w-9 rounded-r-lg border border-l-0 border-base-800 bg-base-950 text-base-400 hover:text-neon-400 hover:border-neon-500/40 hover:bg-neon-400/5 transition-colors cursor-pointer"
+                  :aria-label="t('skill.cliInstallHelpAria')"
+                  :aria-expanded="showCliInstallHelp"
+                  @click.stop="showCliInstallHelp = !showCliInstallHelp"
+                >
+                  ?
+                </button>
+                <div
+                  v-if="showCliInstallHelp"
+                  class="cli-install-help-popover"
+                  role="tooltip"
+                >
+                  <p class="cli-install-help-title">{{ t('skill.cliInstallHelpTitle') }}</p>
+                  <p class="cli-install-help-desc">{{ t('skill.cliInstallHelpDesc') }}</p>
+                  <code class="cli-install-help-code">npm install -g skill-base-cli</code>
+                </div>
+              </div>
               <button
                 @click="goToDiff"
                 class="flex items-center justify-center gap-2 bg-transparent text-fg-strong border border-base-800 hover:bg-base-800 text-sm font-mono px-5 py-2.5 rounded-lg transition-colors w-full sm:w-auto"
@@ -577,7 +618,7 @@ import {
   Trash2,
   ArrowUpToLine,
 } from 'lucide-vue-next'
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useSkillsStore } from '@/stores/skills'
@@ -599,11 +640,41 @@ const { t, currentLang } = useI18n()
 const skillId = computed(() => route.params.id as string)
 const skill = computed(() => skillsStore.currentSkill)
 
+const loginRedirect = computed(() => ({
+  path: '/login',
+  query: { redirect: route.fullPath },
+}))
+
+const showSessionExpired = computed(() => {
+  if (skill.value || isInitializing.value || skillsStore.isLoadingDetail) return false
+  return skillsStore.errorStatus === 401 || skillsStore.errorCode === 'session_expired'
+})
+
+const showAuthHint = computed(() => {
+  if (skill.value || isInitializing.value || skillsStore.isLoadingDetail) return false
+  if (showSessionExpired.value) return false
+  return !authStore.isLoggedIn && authStore.hasFetchedUser && skillsStore.errorStatus === 404
+})
+
 const installCliCommand = computed(() => {
   const id = skill.value?.id?.trim()
   if (!id) return ''
   return `skb install ${id}`
 })
+
+const showCliInstallHelp = ref(false)
+
+function closeCliInstallHelp() {
+  showCliInstallHelp.value = false
+}
+
+function onDocumentClickForCliHelp(e: MouseEvent) {
+  if (!showCliInstallHelp.value) return
+  const target = e.target
+  if (!(target instanceof Element)) return
+  if (target.closest('.cli-install-help-group')) return
+  closeCliInstallHelp()
+}
 
 async function copyInstallCommand() {
   const text = installCliCommand.value
@@ -856,7 +927,7 @@ onMounted(async () => {
   // Set page title
   document.title = t('skill.title')
 
-  // Load skill
+  await authStore.fetchUser()
   await skillsStore.fetchSkill(skillId.value)
   if (canEditTags.value) {
     await loadAvailableTags()
@@ -879,6 +950,12 @@ onMounted(async () => {
 
   // ESC 键退出全屏
   document.addEventListener('keydown', handleEscKey)
+  document.addEventListener('click', onDocumentClickForCliHelp)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('keydown', handleEscKey)
+  document.removeEventListener('click', onDocumentClickForCliHelp)
 })
 
 async function loadVersions() {
@@ -1764,5 +1841,44 @@ html[data-theme="light"] .card {
   color: #f87171;
   font-size: 0.875rem;
   margin-bottom: 1rem;
+}
+
+.cli-install-help-popover {
+  position: absolute;
+  bottom: calc(100% + 0.5rem);
+  right: 0;
+  z-index: 20;
+  width: min(18rem, calc(100vw - 2rem));
+  padding: 0.75rem 0.875rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--color-base-800);
+  background: var(--color-base-900);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+}
+
+.cli-install-help-title {
+  margin: 0 0 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-fg-strong);
+}
+
+.cli-install-help-desc {
+  margin: 0 0 0.5rem;
+  font-size: 0.6875rem;
+  line-height: 1.5;
+  color: var(--color-base-400);
+}
+
+.cli-install-help-code {
+  display: block;
+  padding: 0.375rem 0.5rem;
+  border-radius: 0.375rem;
+  background: var(--color-base-950);
+  border: 1px solid var(--color-base-800);
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.6875rem;
+  color: var(--color-neon-400);
+  word-break: break-all;
 }
 </style>

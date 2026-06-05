@@ -122,6 +122,12 @@ async function skillsRoutes(fastify, options) {
       return reply.code(404).send({ detail: 'Skill not found' });
     }
     if (!canViewSkill(request.user, skill_id)) {
+      if (request.sessionStale && skill.visibility === 'private') {
+        return reply.code(401).send({
+          error: 'session_expired',
+          detail: 'Session expired. Please sign in again.'
+        });
+      }
       return reply.code(404).send({ detail: 'Skill not found' });
     }
 

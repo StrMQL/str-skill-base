@@ -62,13 +62,20 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
     }
   }
 
+  function compareTargets(a, b) {
+    const ae = a.exists ? 1 : 0;
+    const be = b.exists ? 1 : 0;
+    if (ae !== be) return be - ae;
+    if (!a.exists && !b.exists) {
+      const au = a.ide === 'universal' ? 1 : 0;
+      const bu = b.ide === 'universal' ? 1 : 0;
+      if (au !== bu) return bu - au;
+    }
+    return a.name.localeCompare(b.name);
+  }
+
   function sortTargetsByExists(targets) {
-    return [...targets].sort((a, b) => {
-      const ae = a.exists ? 1 : 0;
-      const be = b.exists ? 1 : 0;
-      if (ae !== be) return be - ae;
-      return a.name.localeCompare(b.name);
-    });
+    return [...targets].sort(compareTargets);
   }
 
   function buildGlobalTargets() {
@@ -101,7 +108,7 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         global: false,
         exists: false
       }))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort(compareTargets);
   }
 
   function buildProjectTargets(cwd) {

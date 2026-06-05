@@ -128,6 +128,10 @@ const zh: Record<string, string> = {
   'skill.download': '下载当前版本',
   'skill.copyInstallSuccess': '已复制到剪贴板',
   'skill.copyInstallFailed': '复制失败，请手动复制',
+  'skill.copyInstallHint': '点击复制安装命令',
+  'skill.cliInstallHelpAria': 'skb CLI 安装说明',
+  'skill.cliInstallHelpTitle': 'Skill Base CLI（skb）',
+  'skill.cliInstallHelpDesc': 'Skill Base 官方命令行客户端，用于搜索、安装与发布 Skill。',
   'skill.compare': '对比版本',
   'skill.favorite': '收藏',
   'skill.unfavorite': '取消收藏',
@@ -154,6 +158,10 @@ const zh: Record<string, string> = {
   'skill.loadInfoFailed': '加载 Skill 信息失败',
   'skill.notFound': 'Skill 不存在',
   'skill.notFoundDesc': '该 Skill 可能已被删除或你没有访问权限',
+  'skill.sessionExpired': '登录已失效',
+  'skill.sessionExpiredDesc': '服务端会话已过期（例如服务重启后）。请重新登录后再查看此 Skill。',
+  'skill.authRequired': '需要登录',
+  'skill.authRequiredDesc': '请登录后查看；若已登录仍无法访问，该 Skill 可能不存在或你没有权限。',
   'skill.backToHome': '返回首页',
   'skill.collaborators': '协作者',
   'skill.noFile': '暂无文件',
@@ -498,6 +506,10 @@ const zh: Record<string, string> = {
   'tagAdmin.deleteConfirm': '确定删除标签「{name}」吗？将同时移除各 Skill 上的关联。',
   'tagAdmin.deleteSuccess': '标签已删除',
   'tagAdmin.deleteError': '删除失败',
+
+  'footer.website': '官网',
+  'footer.cli': 'CLI',
+  'footer.desktop': 'Desktop',
 }
 
 const en: Record<string, string> = {
@@ -622,6 +634,10 @@ const en: Record<string, string> = {
   'skill.download': 'Download',
   'skill.copyInstallSuccess': 'Copied to clipboard',
   'skill.copyInstallFailed': 'Copy failed; copy manually',
+  'skill.copyInstallHint': 'Click to copy install command',
+  'skill.cliInstallHelpAria': 'skb CLI install instructions',
+  'skill.cliInstallHelpTitle': 'Skill Base CLI (skb)',
+  'skill.cliInstallHelpDesc': 'Official command-line client for searching, installing, and publishing Skills.',
   'skill.compare': 'Compare',
   'skill.favorite': 'Favorite',
   'skill.unfavorite': 'Unfavorite',
@@ -648,6 +664,10 @@ const en: Record<string, string> = {
   'skill.loadInfoFailed': 'Failed to load Skill info',
   'skill.notFound': 'Skill Not Found',
   'skill.notFoundDesc': 'This skill may have been deleted or you do not have access',
+  'skill.sessionExpired': 'Session Expired',
+  'skill.sessionExpiredDesc': 'Your session has expired (for example after a server restart). Please sign in again to view this skill.',
+  'skill.authRequired': 'Sign In Required',
+  'skill.authRequiredDesc': 'Please sign in to view this skill. If you are already signed in, it may not exist or you may not have access.',
   'skill.backToHome': 'Back to Home',
   'skill.collaborators': 'Collaborators',
   'skill.noFile': 'No files',
@@ -991,6 +1011,10 @@ const en: Record<string, string> = {
   'tagAdmin.deleteConfirm': 'Delete tag "{name}"? This removes it from all skills.',
   'tagAdmin.deleteSuccess': 'Tag deleted',
   'tagAdmin.deleteError': 'Failed to delete tag',
+
+  'footer.website': 'Website',
+  'footer.cli': 'CLI',
+  'footer.desktop': 'Desktop',
 }
 
 // Cookie helpers for fallback when localStorage is not available

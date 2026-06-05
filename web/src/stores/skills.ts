@@ -10,6 +10,8 @@ export const useSkillsStore = defineStore('skills', () => {
   const isLoading = ref(false)
   const isLoadingDetail = ref(false)
   const error = ref<string | null>(null)
+  const errorStatus = ref<number | null>(null)
+  const errorCode = ref<string | null>(null)
   const searchQuery = ref('')
 
   // Getters
@@ -73,6 +75,8 @@ export const useSkillsStore = defineStore('skills', () => {
   async function fetchSkill(id: string) {
     isLoadingDetail.value = true
     error.value = null
+    errorStatus.value = null
+    errorCode.value = null
     currentSkill.value = null
 
     try {
@@ -81,6 +85,8 @@ export const useSkillsStore = defineStore('skills', () => {
       return true
     } catch (err: any) {
       error.value = err.message || '获取 Skill 详情失败'
+      errorStatus.value = err.status ?? null
+      errorCode.value = err.data?.error ?? null
       currentSkill.value = null
       return false
     } finally {
@@ -220,6 +226,8 @@ export const useSkillsStore = defineStore('skills', () => {
 
   function clearError() {
     error.value = null
+    errorStatus.value = null
+    errorCode.value = null
   }
 
   return {
@@ -229,6 +237,8 @@ export const useSkillsStore = defineStore('skills', () => {
     isLoading,
     isLoadingDetail,
     error,
+    errorStatus,
+    errorCode,
     searchQuery,
     // Getters
     sortedSkills,

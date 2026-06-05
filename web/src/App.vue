@@ -7,21 +7,35 @@
     </main>
     <footer
       v-if="showNavbar"
-      class="shrink-0 border-t border-base-800/80 py-4"
+      class="shrink-0 border-t border-base-800/80 py-3"
     >
       <div class="container max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div
-          class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-[11px] font-mono text-base-400"
+          class="flex flex-nowrap items-center justify-between gap-x-3 gap-y-0 overflow-x-auto text-[11px] font-mono text-base-400 whitespace-nowrap"
         >
-          <p class="m-0">&copy; {{ copyrightYear }} Skill Base</p>
-          <div class="flex flex-wrap items-center gap-x-4 gap-y-1">
+          <p class="m-0 shrink-0">&copy; {{ copyrightYear }} Skill Base</p>
+          <div class="flex flex-nowrap items-center gap-x-3 shrink-0">
             <a
               href="https://skillbase.reaidea.com"
               target="_blank"
               rel="noopener noreferrer"
               class="text-base-400 hover:text-fg transition-colors"
-            >skillbase.reaidea.com</a>
-            <span class="text-base-700 hidden sm:inline" aria-hidden="true">·</span>
+            >{{ t('footer.website') }}</a>
+            <span class="text-base-700" aria-hidden="true">·</span>
+            <a
+              href="https://www.npmjs.com/package/skill-base-cli"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-base-400 hover:text-fg transition-colors"
+            >{{ t('footer.cli') }}</a>
+            <span class="text-base-700" aria-hidden="true">·</span>
+            <a
+              href="https://github.com/ginuim/skill-base/releases/tag/desktop-latest"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="text-base-400 hover:text-fg transition-colors"
+            >{{ t('footer.desktop') }}</a>
+            <span class="text-base-700" aria-hidden="true">·</span>
             <a
               href="https://github.com/ginuim/skill-base"
               target="_blank"
@@ -43,10 +57,12 @@ import { useRoute } from 'vue-router'
 import SkillBaseNav from '@/components/SkillBaseNav.vue'
 import Toast from '@/components/Toast.vue'
 import { useToast } from '@/composables/useToast'
+import { useI18n } from '@/composables/useI18n'
 
 const route = useRoute()
 const toastRef = ref(null)
 const { setToastRef } = useToast()
+const { t } = useI18n()
 
 onMounted(() => {
   if (toastRef.value) {
