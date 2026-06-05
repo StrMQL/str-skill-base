@@ -32,7 +32,7 @@
         <div class="navbar-user">
           <button
             type="button"
-            class="lang-switcher-trigger navbar-surface-btn sb-theme-toggle"
+            class="lang-switcher-trigger navbar-surface-btn sb-nav-action-btn sb-theme-toggle"
             :aria-label="themeToggleAria"
             @click.stop="toggleColorMode"
           >
@@ -41,7 +41,7 @@
           </button>
 
           <div class="lang-switcher" :class="{ active: showLangMenu }">
-            <button type="button" class="lang-switcher-trigger navbar-surface-btn" @click.stop="toggleLangMenu">
+            <button type="button" class="lang-switcher-trigger navbar-surface-btn sb-nav-action-btn" @click.stop="toggleLangMenu">
               <Globe :size="14" :stroke-width="2.2" aria-hidden="true" />
               <span>{{ currentLang === 'zh' ? '中文' : 'English' }}</span>
               <ChevronDown class="lang-chevron" :size="12" :stroke-width="2.5" aria-hidden="true" />
@@ -53,7 +53,7 @@
           </div>
 
           <div v-if="authStore.isLoggedIn" class="navbar-user-dropdown" :class="{ active: showUserMenu }">
-            <button type="button" class="navbar-user-btn navbar-surface-btn" @click.stop="toggleUserMenu">
+            <button type="button" class="navbar-user-btn navbar-surface-btn sb-nav-action-btn" @click.stop="toggleUserMenu">
               <span class="username">{{ authStore.displayName }}</span>
               <ChevronDown :size="16" :stroke-width="2" aria-hidden="true" />
             </button>
@@ -82,7 +82,7 @@
             </div>
           </div>
 
-          <router-link v-else to="/login" class="sb-nav-login-btn">{{ t('nav.login') }}</router-link>
+          <router-link v-else to="/login" class="sb-nav-login-btn sb-nav-action-btn">{{ t('nav.login') }}</router-link>
         </div>
       </div>
     </div>
@@ -476,8 +476,14 @@ onUnmounted(() => {
   font-size: 0.75rem;
 }
 
-.sb-theme-toggle {
-  padding: 6px 8px;
+.sb-nav-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.25rem;
+  padding: 0.375rem 0.75rem;
+  line-height: 1.25;
 }
 
 .sb-theme-toggle svg {
@@ -493,7 +499,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 10px;
   background: transparent;
   border: 1px solid var(--color-base-800);
   border-radius: 8px;
@@ -503,7 +508,6 @@ onUnmounted(() => {
   color: var(--color-base-400);
   transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
   white-space: nowrap;
-  line-height: 1;
   text-decoration: none;
 }
 
@@ -587,7 +591,6 @@ onUnmounted(() => {
   display: flex;
   align-items: center;
   gap: 5px;
-  padding: 6px 12px;
   background-color: transparent;
   border: 1px solid var(--color-base-800);
   border-radius: 8px;
@@ -673,10 +676,6 @@ onUnmounted(() => {
 }
 
 .sb-nav-login-btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 0.375rem 0.75rem;
   font-family: 'JetBrains Mono', monospace;
   font-size: 0.8125rem;
   font-weight: 500;
