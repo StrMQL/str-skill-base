@@ -66,6 +66,51 @@ function seedSkills(app) {
   `).run();
 }
 
+test('unauthenticated users can list collections', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+
+    const create = await app.inject({
+      method: 'POST',
+      url: `${app.apiPrefix}/collections`,
+      headers: { cookie: sessionCookie(app, 1) },
+      payload: { name: 'Public Pack', slug: 'public-pack', description: 'visible in list', sort_order: 0 }
+    });
+    assert.equal(create.statusCode, 201);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections`
+    });
+
+    assert.equal(list.statusCode, 200);
+    assert.equal(list.json().collections.length, 1);
+    assert.equal(list.json().collections[0].slug, 'public-pack');
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('admin cannot create a collection with an overlong description', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+
+    const create = await app.inject({
+      method: 'POST',
+      url: `${app.apiPrefix}/collections`,
+      headers: { cookie: sessionCookie(app, 1) },
+      payload: { name: 'Too Long', slug: 'too-long', description: 'x'.repeat(121), sort_order: 0 }
+    });
+
+    assert.equal(create.statusCode, 400);
+    assert.match(create.json().detail, /too long/i);
+  } finally {
+    await app.cleanup();
+  }
+});
+
 test('admin can create a collection and replace its skill members', async () => {
   const app = await buildTestApp();
   try {
@@ -76,12 +121,13 @@ test('admin can create a collection and replace its skill members', async () => 
       method: 'POST',
       url: `${app.apiPrefix}/collections`,
       headers: { cookie: sessionCookie(app, 1) },
-      payload: { name: 'Frontend Essentials', description: 'Install these first', sort_order: 10 }
+      payload: { name: 'Frontend Essentials', slug: 'frontend-essentials', description: 'Install these first', sort_order: 10 }
     });
 
     assert.equal(create.statusCode, 201);
     const collection = create.json().collection;
     assert.equal(collection.name, 'Frontend Essentials');
+    assert.equal(collection.slug, 'frontend-essentials');
     assert.equal(collection.skill_count, 0);
 
     const replace = await app.inject({
@@ -94,14 +140,101 @@ test('admin can create a collection and replace its skill members', async () => 
     assert.equal(replace.statusCode, 200);
     assert.deepEqual(replace.json().skills.map((skill) => skill.id), ['public-skill', 'private-skill']);
 
-    const list = await app.inject({
+    const outsiderList = await app.inject({
       method: 'GET',
       url: `${app.apiPrefix}/collections`,
       headers: { cookie: sessionCookie(app, 3) }
     });
 
+    assert.equal(outsiderList.statusCode, 200);
+    assert.deepEqual(outsiderList.json().collections.map((item) => item.skill_count), [1]);
+
+    const ownerList = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections`,
+      headers: { cookie: sessionCookie(app, 2) }
+    });
+
+    assert.equal(ownerList.statusCode, 200);
+    assert.deepEqual(ownerList.json().collections.map((item) => item.skill_count), [2]);
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('admin collection browse excludes private skills unless include_private=1', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+    seedSkillWithVersion(app, { skillId: 'public-skill' });
+    seedSkillWithVersion(app, { skillId: 'private-skill', visibility: 'private' });
+
+    app.db.prepare(`
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Mixed Pack', 'mixed-pack', 'admin browse test', 0, 1, 1)
+    `).run();
+    app.db.prepare(`
+      INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
+      VALUES
+        (1, 'public-skill', 0, 1),
+        (1, 'private-skill', 1, 1)
+    `).run();
+
+    const browse = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/mixed-pack`,
+      headers: { cookie: sessionCookie(app, 1) }
+    });
+
+    assert.equal(browse.statusCode, 200);
+    assert.deepEqual(browse.json().skills.map((skill) => skill.id), ['public-skill']);
+
+    const manage = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/mixed-pack?include_private=1`,
+      headers: { cookie: sessionCookie(app, 1) }
+    });
+
+    assert.equal(manage.statusCode, 200);
+    assert.deepEqual(manage.json().skills.map((skill) => skill.id), ['public-skill', 'private-skill']);
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('unauthenticated collection detail excludes private skills', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+    seedSkills(app);
+
+    app.db.prepare(`
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'All Hands', 'all-hands', 'mixed visibility', 0, 1, 1)
+    `).run();
+    app.db.prepare(`
+      INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
+      VALUES
+        (1, 'public-skill', 0, 1),
+        (1, 'private-skill', 1, 1)
+    `).run();
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/all-hands`
+    });
+
+    assert.equal(detail.statusCode, 200);
+    assert.deepEqual(detail.json().skills.map((skill) => skill.id), ['public-skill']);
+    assert.equal(detail.json().collection.skill_count, 1);
+
+    const list = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections`
+    });
+
     assert.equal(list.statusCode, 200);
-    assert.deepEqual(list.json().collections.map((item) => item.skill_count), [2]);
+    assert.equal(list.json().collections[0].skill_count, 1);
   } finally {
     await app.cleanup();
   }
@@ -114,8 +247,8 @@ test('collection detail filters member skills by viewer visibility', async () =>
     seedSkills(app);
 
     app.db.prepare(`
-      INSERT INTO collections (id, name, description, sort_order, created_by, updated_by)
-      VALUES (1, 'All Hands', 'mixed visibility', 0, 1, 1)
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'All Hands', 'all-hands', 'mixed visibility', 0, 1, 1)
     `).run();
     app.db.prepare(`
       INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
@@ -173,8 +306,8 @@ test('collection members cannot exceed 10 skills', async () => {
     }
 
     app.db.prepare(`
-      INSERT INTO collections (id, name, description, sort_order, created_by, updated_by)
-      VALUES (1, 'Too Many', 'limit test', 0, 1, 1)
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Too Many', 'too-many', 'limit test', 0, 1, 1)
     `).run();
 
     const replace = await app.inject({
@@ -201,8 +334,8 @@ test('collection download returns one zip with skill directories at root', async
     seedSkillWithVersion(app, { skillId: 'private-skill', visibility: 'private' });
 
     app.db.prepare(`
-      INSERT INTO collections (id, name, description, sort_order, created_by, updated_by)
-      VALUES (1, 'Frontend Essentials', 'bundle test', 0, 1, 1)
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Frontend Essentials', 'frontend-essentials', 'bundle test', 0, 1, 1)
     `).run();
     app.db.prepare(`
       INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
@@ -219,7 +352,7 @@ test('collection download returns one zip with skill directories at root', async
 
     assert.equal(res.statusCode, 200);
     assert.match(res.headers['content-type'], /application\/zip/);
-    assert.match(res.headers['content-disposition'], /collection-1-frontend-essentials\.zip/);
+    assert.match(res.headers['content-disposition'], /frontend-essentials\.zip/);
 
     const zip = new AdmZip(res.rawPayload);
     const names = zip.getEntries().map((entry) => entry.entryName.replace(/\\/g, '/'));
@@ -230,15 +363,15 @@ test('collection download returns one zip with skill directories at root', async
   }
 });
 
-test('collection download avoids duplicate id in filename when name slug matches id', async () => {
+test('collection download can be resolved by slug and uses slug filename', async () => {
   const app = await buildTestApp();
   try {
     seedUsers(app);
     seedSkillWithVersion(app, { skillId: 'public-skill' });
 
     app.db.prepare(`
-      INSERT INTO collections (id, name, description, sort_order, created_by, updated_by)
-      VALUES (3, 'Collection 3', 'duplicate slug test', 0, 1, 1)
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (3, 'Collection 3', 'pm-essentials', 'slug download test', 0, 1, 1)
     `).run();
     app.db.prepare(`
       INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
@@ -247,13 +380,114 @@ test('collection download avoids duplicate id in filename when name slug matches
 
     const res = await app.inject({
       method: 'GET',
-      url: `${app.apiPrefix}/collections/3/download`,
+      url: `${app.apiPrefix}/collections/pm-essentials/download`,
       headers: { cookie: sessionCookie(app, 2) }
     });
 
     assert.equal(res.statusCode, 200);
-    assert.match(res.headers['content-disposition'], /collection-3\.zip/);
-    assert.doesNotMatch(res.headers['content-disposition'], /collection-3-collection-3\.zip/);
+    assert.match(res.headers['content-disposition'], /pm-essentials\.zip/);
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('collection slug must be unique', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+
+    const first = await app.inject({
+      method: 'POST',
+      url: `${app.apiPrefix}/collections`,
+      headers: { cookie: sessionCookie(app, 1) },
+      payload: { name: 'Pack A', slug: 'shared-slug', description: 'first', sort_order: 0 }
+    });
+    assert.equal(first.statusCode, 201);
+
+    const second = await app.inject({
+      method: 'POST',
+      url: `${app.apiPrefix}/collections`,
+      headers: { cookie: sessionCookie(app, 1) },
+      payload: { name: 'Pack B', slug: 'shared-slug', description: 'second', sort_order: 1 }
+    });
+
+    assert.equal(second.statusCode, 409);
+    assert.match(second.json().detail, /slug already exists/i);
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('collection download increments collection download_count', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+    seedSkillWithVersion(app, { skillId: 'public-skill' });
+
+    app.db.prepare(`
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Download Counter', 'download-counter', 'count test', 0, 1, 1)
+    `).run();
+    app.db.prepare(`
+      INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
+      VALUES (1, 'public-skill', 0, 1)
+    `).run();
+
+    const before = app.db.prepare('SELECT download_count FROM collections WHERE id = 1').get();
+    assert.equal(before.download_count, 0);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/1/download`,
+      headers: { cookie: sessionCookie(app, 2) }
+    });
+
+    assert.equal(res.statusCode, 200);
+
+    const after = app.db.prepare('SELECT download_count FROM collections WHERE id = 1').get();
+    assert.equal(after.download_count, 1);
+
+    const detail = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/1`,
+      headers: { cookie: sessionCookie(app, 2) }
+    });
+
+    assert.equal(detail.statusCode, 200);
+    assert.equal(detail.json().collection.download_count, 1);
+  } finally {
+    await app.cleanup();
+  }
+});
+
+test('unauthenticated collection download excludes private skills', async () => {
+  const app = await buildTestApp();
+  try {
+    seedUsers(app);
+    seedSkillWithVersion(app, { skillId: 'public-skill' });
+    seedSkillWithVersion(app, { skillId: 'private-skill', visibility: 'private' });
+
+    app.db.prepare(`
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Mixed Pack', 'mixed-pack', 'visibility test', 0, 1, 1)
+    `).run();
+    app.db.prepare(`
+      INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)
+      VALUES
+        (1, 'public-skill', 0, 1),
+        (1, 'private-skill', 1, 1)
+    `).run();
+
+    const res = await app.inject({
+      method: 'GET',
+      url: `${app.apiPrefix}/collections/mixed-pack/download`
+    });
+
+    assert.equal(res.statusCode, 200);
+    const zip = new AdmZip(res.rawPayload);
+    const names = zip.getEntries().map((entry) => entry.entryName.replace(/\\/g, '/'));
+    assert.ok(names.some((name) => name === 'public-skill/SKILL.md'));
+    assert.ok(!names.some((name) => name.startsWith('private-skill/')));
   } finally {
     await app.cleanup();
   }
@@ -267,8 +501,8 @@ test('collection download excludes private skills for users without access', asy
     seedSkillWithVersion(app, { skillId: 'private-skill', visibility: 'private' });
 
     app.db.prepare(`
-      INSERT INTO collections (id, name, description, sort_order, created_by, updated_by)
-      VALUES (1, 'Mixed Pack', 'visibility test', 0, 1, 1)
+      INSERT INTO collections (id, name, slug, description, sort_order, created_by, updated_by)
+      VALUES (1, 'Mixed Pack', 'mixed-pack', 'visibility test', 0, 1, 1)
     `).run();
     app.db.prepare(`
       INSERT INTO collection_skills (collection_id, skill_id, sort_order, created_by)

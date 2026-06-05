@@ -2,6 +2,10 @@ const db = require('../database');
 const modelCache = require('../utils/model-cache');
 
 const MAX_COLLECTION_SKILLS = 10;
+const MAX_COLLECTION_DESCRIPTION_LENGTH = 120;
+const MIN_COLLECTION_SLUG_LENGTH = 2;
+const MAX_COLLECTION_SLUG_LENGTH = 64;
+const COLLECTION_SLUG_PATTERN = /^[a-z][a-z0-9-]*$/;
 
 function normalizeName(name) {
   return String(name || '').trim();
@@ -12,9 +16,31 @@ function normalizeDescription(description) {
   return String(description).trim();
 }
 
+function isDescriptionTooLong(description) {
+  return normalizeDescription(description).length > MAX_COLLECTION_DESCRIPTION_LENGTH;
+}
+
 function normalizeSortOrder(sortOrder) {
   const n = Number(sortOrder);
   return Number.isFinite(n) ? Math.trunc(n) : 0;
+}
+
+function normalizeSlug(slug) {
+  return String(slug || '').trim().toLowerCase();
+}
+
+function isValidSlug(slug) {
+  const normalized = normalizeSlug(slug);
+  return (
+    normalized.length >= MIN_COLLECTION_SLUG_LENGTH
+    && normalized.length <= MAX_COLLECTION_SLUG_LENGTH
+    && COLLECTION_SLUG_PATTERN.test(normalized)
+  );
+}
+
+function isSlugConflictError(error) {
+  const message = String(error && error.message ? error.message : error);
+  return message.includes('UNIQUE constraint failed') && message.includes('collections.slug');
 }
 
 function getCollectionById(id) {
@@ -22,8 +48,10 @@ function getCollectionById(id) {
     SELECT
       c.id,
       c.name,
+      c.slug,
       c.description,
       c.sort_order,
+      c.download_count,
       c.created_at,
       c.updated_at,
       c.created_by,
@@ -45,10 +73,7 @@ function invalidateSkillRefs(skillIds) {
   }
 }
 
-function visibilityPredicate(viewer) {
-  if (viewer?.role === 'admin') {
-    return { join: '', where: '', params: [] };
-  }
+function collectionBrowseVisibilityPredicate(viewer) {
   if (viewer) {
     return {
       join: 'LEFT JOIN skill_collaborators sc_view ON s.id = sc_view.skill_id AND sc_view.user_id = ?',
@@ -60,12 +85,13 @@ function visibilityPredicate(viewer) {
 }
 
 const CollectionModel = {
-  create({ name, description, sortOrder, actorId }) {
+  create({ name, slug, description, sortOrder, actorId }) {
     const result = db.prepare(`
-      INSERT INTO collections (name, description, sort_order, created_by, updated_by)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO collections (name, slug, description, sort_order, created_by, updated_by)
+      VALUES (?, ?, ?, ?, ?, ?)
     `).run(
       normalizeName(name),
+      normalizeSlug(slug),
       normalizeDescription(description),
       normalizeSortOrder(sortOrder),
       actorId,
@@ -74,13 +100,17 @@ const CollectionModel = {
     return getCollectionById(result.lastInsertRowid);
   },
 
-  update(id, { name, description, sortOrder, actorId }) {
+  update(id, { name, slug, description, sortOrder, actorId }) {
     const fields = [];
     const values = [];
 
     if (name !== undefined) {
       fields.push('name = ?');
       values.push(normalizeName(name));
+    }
+    if (slug !== undefined) {
+      fields.push('slug = ?');
+      values.push(normalizeSlug(slug));
     }
     if (description !== undefined) {
       fields.push('description = ?');
@@ -121,21 +151,58 @@ const CollectionModel = {
     return getCollectionById(id);
   },
 
-  listAllWithUsage() {
-    return db.prepare(`
+  findBySlug(slug) {
+    const normalized = normalizeSlug(slug);
+    if (!normalized) return null;
+    const row = db.prepare('SELECT id FROM collections WHERE slug = ?').get(normalized);
+    if (!row) return null;
+    return getCollectionById(row.id);
+  },
+
+  resolveRef(ref) {
+    const raw = String(ref || '').trim();
+    if (!raw) return null;
+
+    const asId = Number(raw);
+    if (Number.isInteger(asId) && asId > 0) {
+      return this.findById(asId);
+    }
+
+    return this.findBySlug(raw);
+  },
+
+  countVisibleCollectionSkills(collectionId, viewer) {
+    const visibility = collectionBrowseVisibilityPredicate(viewer);
+    const row = db.prepare(`
+      SELECT COUNT(*) AS count
+      FROM collection_skills cs
+      JOIN skills s ON s.id = cs.skill_id
+      ${visibility.join}
+      WHERE cs.collection_id = ?
+      ${visibility.where}
+    `).get(...visibility.params, collectionId);
+    return row?.count || 0;
+  },
+
+  listAllWithUsage(viewer) {
+    const collections = db.prepare(`
       SELECT
         c.id,
         c.name,
+        c.slug,
         c.description,
         c.sort_order,
+        c.download_count,
         c.created_at,
-        c.updated_at,
-        COUNT(cs.skill_id) AS skill_count
+        c.updated_at
       FROM collections c
-      LEFT JOIN collection_skills cs ON cs.collection_id = c.id
-      GROUP BY c.id
       ORDER BY c.sort_order ASC, c.name ASC
     `).all();
+
+    return collections.map((collection) => ({
+      ...collection,
+      skill_count: this.countVisibleCollectionSkills(collection.id, viewer)
+    }));
   },
 
   listSkillCollections(skillId) {
@@ -149,7 +216,7 @@ const CollectionModel = {
   },
 
   listCollectionSkills(collectionId, viewer) {
-    const visibility = visibilityPredicate(viewer);
+    const visibility = collectionBrowseVisibilityPredicate(viewer);
     return db.prepare(`
       SELECT s.*, u.username as owner_username, u.name as owner_name
       FROM collection_skills cs
@@ -160,6 +227,25 @@ const CollectionModel = {
         ${visibility.where}
       ORDER BY cs.sort_order ASC, s.updated_at DESC
     `).all(...visibility.params, collectionId);
+  },
+
+  listAllCollectionSkills(collectionId) {
+    return db.prepare(`
+      SELECT s.*, u.username as owner_username, u.name as owner_name
+      FROM collection_skills cs
+      JOIN skills s ON s.id = cs.skill_id
+      LEFT JOIN users u ON s.owner_id = u.id
+      WHERE cs.collection_id = ?
+      ORDER BY cs.sort_order ASC, s.updated_at DESC
+    `).all(collectionId);
+  },
+
+  incrementDownloadCount(id) {
+    db.prepare(`
+      UPDATE collections
+      SET download_count = COALESCE(download_count, 0) + 1
+      WHERE id = ?
+    `).run(id);
   },
 
   replaceCollectionSkills(collectionId, skillIds, actorId) {
@@ -199,10 +285,17 @@ const CollectionModel = {
       });
 
       invalidateSkillRefs([...new Set([...previousSkillIds, ...uniqueSkillIds])]);
-      return this.listCollectionSkills(collectionId, { id: actorId, role: 'admin' });
+      return this.listAllCollectionSkills(collectionId);
     })();
   }
 };
 
 module.exports = CollectionModel;
 module.exports.MAX_COLLECTION_SKILLS = MAX_COLLECTION_SKILLS;
+module.exports.MAX_COLLECTION_DESCRIPTION_LENGTH = MAX_COLLECTION_DESCRIPTION_LENGTH;
+module.exports.MIN_COLLECTION_SLUG_LENGTH = MIN_COLLECTION_SLUG_LENGTH;
+module.exports.MAX_COLLECTION_SLUG_LENGTH = MAX_COLLECTION_SLUG_LENGTH;
+module.exports.isDescriptionTooLong = isDescriptionTooLong;
+module.exports.normalizeSlug = normalizeSlug;
+module.exports.isValidSlug = isValidSlug;
+module.exports.isSlugConflictError = isSlugConflictError;

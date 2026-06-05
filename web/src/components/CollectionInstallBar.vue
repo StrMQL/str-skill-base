@@ -1,14 +1,14 @@
 <template>
   <div class="collection-install-bar">
     <span class="collection-install-prompt">$</span>
-    <code class="collection-install-cmd">skb install --collection {{ collectionId }}</code>
+    <code class="collection-install-cmd">skb install --collection {{ collectionSlug }}</code>
     <button
       type="button"
       class="collection-install-copy"
       :title="t('index.copyCommand')"
-      @click="copyCollectionInstallCommand(collectionId)"
+      @click="copyCollectionInstallCommand(collectionSlug)"
     >
-      <Copy v-if="copiedId !== collectionId" :size="14" />
+      <Copy v-if="copiedSlug !== collectionSlug" :size="14" />
       <span v-else class="collection-install-copied">{{ t('index.copied') }}</span>
     </button>
   </div>
@@ -20,11 +20,11 @@ import { useI18n } from '@/composables/useI18n'
 import { useBatchInstallCopy } from '@/composables/useBatchInstallCopy'
 
 defineProps<{
-  collectionId: number
+  collectionSlug: string
 }>()
 
 const { t } = useI18n()
-const { copiedId, copyCollectionInstallCommand } = useBatchInstallCopy()
+const { copiedSlug, copyCollectionInstallCommand } = useBatchInstallCopy()
 </script>
 
 <style scoped>

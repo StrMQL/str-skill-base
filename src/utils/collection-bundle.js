@@ -6,24 +6,12 @@ const SkillModel = require('../models/skill');
 const { resolveZipPath } = require('./zip');
 const { isJunkZipPath } = require('./zip-sanitize');
 
-function slugifyCollectionName(name) {
-  return String(name || '')
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
 function buildCollectionFileName(collection) {
-  const id = collection.id;
-  const slug = slugifyCollectionName(collection.name);
-  const idPrefix = `collection-${id}`;
-
-  if (!slug || slug === idPrefix || slug === String(id)) {
-    return `${idPrefix}.zip`;
+  const slug = String(collection?.slug || '').trim().toLowerCase();
+  if (slug) {
+    return `${slug}.zip`;
   }
-
-  return `${idPrefix}-${slug}.zip`;
+  return `collection-${collection.id}.zip`;
 }
 
 function resolveExistingZipPath(skillId, versionRecord) {
@@ -107,6 +95,5 @@ function incrementDownloadCounts(packagedSkills) {
 module.exports = {
   buildCollectionZipBuffer,
   buildCollectionFileName,
-  incrementDownloadCounts,
-  slugifyCollectionName
+  incrementDownloadCounts
 };

@@ -163,9 +163,11 @@ export interface Tag {
 export interface Collection {
   id: number
   name: string
+  slug: string
   description?: string | null
   sort_order?: number
   skill_count?: number
+  download_count?: number
   created_at?: string
   updated_at?: string
   created_by?: { id: number; username: string | null; name: string | null }
@@ -294,15 +296,18 @@ export const tagsApi = {
 
 export const collectionsApi = {
   list: () => apiGet<{ collections: Collection[] }>('/collections'),
-  get: (id: number) => apiGet<{ collection: Collection; skills: Skill[]; total: number }>(`/collections/${id}`),
-  downloadUrl: (id: number) => `${API_BASE}/collections/${id}/download`,
-  create: (data: { name: string; description?: string; sort_order?: number }) =>
+  get: (ref: number | string, options?: { includePrivate?: boolean }) => {
+    const query = options?.includePrivate ? '?include_private=1' : ''
+    return apiGet<{ collection: Collection; skills: Skill[]; total: number }>(`/collections/${ref}${query}`)
+  },
+  downloadUrl: (ref: number | string) => `${API_BASE}/collections/${ref}/download`,
+  create: (data: { name: string; slug: string; description?: string; sort_order?: number }) =>
     apiPost<{ ok: boolean; collection: Collection }>('/collections', data),
-  update: (id: number, data: { name?: string; description?: string; sort_order?: number }) =>
-    apiPatch<{ ok: boolean; collection: Collection }>(`/collections/${id}`, data),
-  delete: (id: number) => apiDelete<{ ok: boolean }>(`/collections/${id}`),
-  replaceSkills: (id: number, skill_ids: string[]) =>
-    apiPut<{ ok: boolean; collection_id: number; skills: Skill[] }>(`/collections/${id}/skills`, { skill_ids }),
+  update: (ref: number | string, data: { name?: string; slug?: string; description?: string; sort_order?: number }) =>
+    apiPatch<{ ok: boolean; collection: Collection }>(`/collections/${ref}`, data),
+  delete: (ref: number | string) => apiDelete<{ ok: boolean }>(`/collections/${ref}`),
+  replaceSkills: (ref: number | string, skill_ids: string[]) =>
+    apiPut<{ ok: boolean; collection_id: number; skills: Skill[] }>(`/collections/${ref}/skills`, { skill_ids }),
 }
 
 // ===== Collaborators API =====

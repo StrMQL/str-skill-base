@@ -43,10 +43,8 @@
       <section class="collection-hero">
         <div class="collection-hero-cover">
           <CollectionBookCover
-            :name="collection.name"
-            :description="collection.description"
+            :collection="collection"
             :skill-count="skills.length"
-            :color-index="collection.id"
             size="lg"
           />
         </div>
@@ -69,13 +67,17 @@
               <dt>{{ t('collections.skillCount') }}</dt>
               <dd>{{ t('index.skillsCount', { count: skills.length }) }}</dd>
             </div>
+            <div class="collection-meta-row">
+              <dt>{{ t('collections.downloadCount') }}</dt>
+              <dd>{{ collection.download_count ?? 0 }}</dd>
+            </div>
           </dl>
 
           <div class="collection-install-section">
             <p class="collection-install-label">{{ t('collections.installCommand') }}</p>
             <p class="collection-install-hint">{{ t('collections.installHint') }}</p>
             <div class="collection-install-actions">
-              <CollectionInstallBar :collection-id="collection.id" />
+              <CollectionInstallBar :collection-slug="collection.slug" />
               <button
                 type="button"
                 class="collection-download-btn"
@@ -177,7 +179,7 @@ function downloadAllSkills() {
 
   isDownloading.value = true
   const link = document.createElement('a')
-  link.href = collectionsApi.downloadUrl(collection.value.id)
+  link.href = collectionsApi.downloadUrl(collection.value.slug)
   link.rel = 'noopener'
   document.body.appendChild(link)
   link.click()
@@ -348,6 +350,11 @@ watch(() => route.params.id, loadDetail)
   font-size: 0.9375rem;
   color: var(--color-base-300);
   line-height: 1.6;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .collection-meta {

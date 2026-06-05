@@ -52,6 +52,7 @@
           <thead>
             <tr class="bg-base-950">
               <th class="px-4 py-3 text-left text-xs font-semibold text-base-400 font-mono uppercase tracking-wider">{{ t('collectionAdmin.thName') }}</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold text-base-400 font-mono uppercase tracking-wider">{{ t('collectionAdmin.thSlug') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-base-400 font-mono uppercase tracking-wider">{{ t('collectionAdmin.thDescription') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-base-400 font-mono uppercase tracking-wider">{{ t('collectionAdmin.thSkills') }}</th>
               <th class="px-4 py-3 text-left text-xs font-semibold text-base-400 font-mono uppercase tracking-wider">{{ t('collectionAdmin.thSort') }}</th>
@@ -61,13 +62,13 @@
           <tbody>
             <template v-if="isLoading">
               <tr v-for="i in 5" :key="'sk-' + i" class="border-t border-base-800">
-                <td v-for="j in 5" :key="j" class="px-4 py-4">
+                <td v-for="j in 6" :key="j" class="px-4 py-4">
                   <div class="h-4 bg-base-800 rounded animate-pulse"></div>
                 </td>
               </tr>
             </template>
             <tr v-else-if="filteredCollections.length === 0" class="border-t border-base-800">
-              <td colspan="5" class="px-4 py-12 text-center text-base-400 font-mono">{{ t('collectionAdmin.emptyState') }}</td>
+              <td colspan="6" class="px-4 py-12 text-center text-base-400 font-mono">{{ t('collectionAdmin.emptyState') }}</td>
             </tr>
             <tr
               v-else
@@ -76,6 +77,7 @@
               class="border-t border-base-800 hover:bg-white/5 transition-colors"
             >
               <td class="px-4 py-4 font-mono text-fg-strong">{{ collection.name }}</td>
+              <td class="px-4 py-4 font-mono text-neon-400">{{ collection.slug }}</td>
               <td class="px-4 py-4 font-mono text-base-400 max-w-md truncate">{{ collection.description || t('state.noDesc') }}</td>
               <td class="px-4 py-4 font-mono text-base-400">{{ collection.skill_count ?? 0 }}</td>
               <td class="px-4 py-4 font-mono text-base-400">{{ collection.sort_order ?? 0 }}</td>
@@ -112,8 +114,33 @@
             <input v-model="form.name" type="text" class="w-full bg-base-950 border border-base-800 rounded-lg px-4 py-2.5 font-mono text-fg-strong focus:border-neon-400 focus:outline-none" :placeholder="t('collectionAdmin.namePlaceholder')" />
           </div>
           <div>
+            <label class="block text-sm text-base-400 font-mono mb-2">{{ t('collectionAdmin.thSlug') }}</label>
+            <input
+              v-model="form.slug"
+              type="text"
+              class="w-full bg-base-950 border border-base-800 rounded-lg px-4 py-2.5 font-mono text-fg-strong focus:border-neon-400 focus:outline-none"
+              :placeholder="t('collectionAdmin.slugPlaceholder')"
+              autocapitalize="off"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="mt-1.5 text-xs text-base-500 font-mono">{{ t('collectionAdmin.slugHint') }}</p>
+          </div>
+          <div>
             <label class="block text-sm text-base-400 font-mono mb-2">{{ t('collectionAdmin.thDescription') }}</label>
-            <textarea v-model="form.description" rows="3" class="w-full bg-base-950 border border-base-800 rounded-lg px-4 py-2.5 font-mono text-fg-strong focus:border-neon-400 focus:outline-none" :placeholder="t('collectionAdmin.descriptionPlaceholder')"></textarea>
+            <textarea
+              v-model="form.description"
+              rows="3"
+              :maxlength="MAX_COLLECTION_DESCRIPTION_LENGTH"
+              class="w-full bg-base-950 border border-base-800 rounded-lg px-4 py-2.5 font-mono text-fg-strong focus:border-neon-400 focus:outline-none"
+              :placeholder="t('collectionAdmin.descriptionPlaceholder')"
+            ></textarea>
+            <p class="mt-1.5 text-xs text-base-500 font-mono">
+              {{ t('collectionAdmin.descriptionMaxHint', { max: MAX_COLLECTION_DESCRIPTION_LENGTH }) }}
+              <span :class="form.description.length > MAX_COLLECTION_DESCRIPTION_LENGTH ? 'text-red-400' : 'text-base-400'">
+                ({{ form.description.length }}/{{ MAX_COLLECTION_DESCRIPTION_LENGTH }})
+              </span>
+            </p>
           </div>
           <div>
             <label class="block text-sm text-base-400 font-mono mb-2">{{ t('collectionAdmin.thSort') }}</label>
@@ -204,8 +231,11 @@ const isSavingMembers = ref(false)
 const membersCollectionId = ref<number | null>(null)
 const selectedSkillIds = ref<string[]>([])
 
+const COLLECTION_SLUG_PATTERN = /^[a-z][a-z0-9-]*$/
+
 const form = ref({
   name: '',
+  slug: '',
   description: '',
   sort_order: 0,
 })
@@ -214,11 +244,14 @@ const filteredCollections = computed(() => {
   const q = searchQuery.value.trim().toLowerCase()
   if (!q) return collections.value
   return collections.value.filter((collection) => {
-    return collection.name.toLowerCase().includes(q) || String(collection.description || '').toLowerCase().includes(q)
+    return collection.name.toLowerCase().includes(q)
+      || collection.slug.toLowerCase().includes(q)
+      || String(collection.description || '').toLowerCase().includes(q)
   })
 })
 
 const MAX_COLLECTION_SKILLS = 10
+const MAX_COLLECTION_DESCRIPTION_LENGTH = 120
 
 const filteredSkills = computed(() => {
   const q = skillSearchQuery.value.trim().toLowerCase()
@@ -245,8 +278,13 @@ async function loadSkills() {
   skills.value = res.skills || []
 }
 
+function isValidSlug(slug: string) {
+  const normalized = slug.trim().toLowerCase()
+  return normalized.length >= 2 && normalized.length <= 64 && COLLECTION_SLUG_PATTERN.test(normalized)
+}
+
 function resetForm() {
-  form.value = { name: '', description: '', sort_order: 0 }
+  form.value = { name: '', slug: '', description: '', sort_order: 0 }
   editingId.value = null
   isEditing.value = false
 }
@@ -261,6 +299,7 @@ function openEditModal(collection: Collection) {
   editingId.value = collection.id
   form.value = {
     name: collection.name,
+    slug: collection.slug,
     description: collection.description || '',
     sort_order: collection.sort_order ?? 0,
   }
@@ -273,8 +312,22 @@ function closeFormModal() {
 
 async function saveForm() {
   const name = form.value.name.trim()
+  const slug = form.value.slug.trim().toLowerCase()
   if (!name) {
     globalToast.error(t('collectionAdmin.nameRequired'))
+    return
+  }
+  if (!slug) {
+    globalToast.error(t('collectionAdmin.slugRequired'))
+    return
+  }
+  if (!isValidSlug(slug)) {
+    globalToast.error(t('collectionAdmin.slugInvalid'))
+    return
+  }
+  const description = form.value.description.trim()
+  if (description.length > MAX_COLLECTION_DESCRIPTION_LENGTH) {
+    globalToast.error(t('collectionAdmin.descriptionTooLong', { max: MAX_COLLECTION_DESCRIPTION_LENGTH }))
     return
   }
 
@@ -282,7 +335,8 @@ async function saveForm() {
   try {
     const body = {
       name,
-      description: form.value.description.trim(),
+      slug,
+      description,
       sort_order: Number(form.value.sort_order) || 0,
     }
     if (isEditing.value && editingId.value !== null) {
@@ -306,7 +360,7 @@ async function openMembersModal(collection: Collection) {
   skillSearchQuery.value = ''
   try {
     await loadSkills()
-    const detail = await collectionsApi.get(collection.id)
+    const detail = await collectionsApi.get(collection.id, { includePrivate: true })
     selectedSkillIds.value = (detail.skills || []).map((skill) => skill.id)
     showMembersModal.value = true
   } catch (err: any) {

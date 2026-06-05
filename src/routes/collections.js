@@ -1,11 +1,11 @@
 const CollectionModel = require('../models/collection');
+const {
+  isDescriptionTooLong,
+  isValidSlug,
+  isSlugConflictError
+} = require('../models/collection');
 const TagModel = require('../models/tag');
 const { buildCollectionZipBuffer, incrementDownloadCounts } = require('../utils/collection-bundle');
-
-function parsePositiveId(raw) {
-  const id = parseInt(raw, 10);
-  return Number.isInteger(id) && id > 0 ? id : null;
-}
 
 function formatSkill(skill) {
   return {
@@ -31,7 +31,10 @@ function formatSkill(skill) {
 function formatCollection(collection) {
   if (!collection) return collection;
   const { creator_username, creator_name, created_by, ...rest } = collection;
-  const formatted = { ...rest };
+  const formatted = {
+    ...rest,
+    download_count: rest.download_count || 0
+  };
   if (created_by) {
     formatted.created_by = {
       id: created_by,
@@ -40,6 +43,23 @@ function formatCollection(collection) {
     };
   }
   return formatted;
+}
+
+function assertSlug(reply, slug, { required = false } = {}) {
+  if (slug === undefined || slug === null || slug === '') {
+    if (required) {
+      reply.code(400).send({ detail: 'Collection slug is required' });
+      return false;
+    }
+    return true;
+  }
+  if (!isValidSlug(slug)) {
+    reply.code(400).send({
+      detail: 'Collection slug must start with a letter and contain only lowercase letters, numbers, and hyphens'
+    });
+    return false;
+  }
+  return true;
 }
 
 function assertMutableFields(reply, body, requireName) {
@@ -52,51 +72,77 @@ function assertMutableFields(reply, body, requireName) {
     reply.code(400).send({ detail: 'Collection name is required' });
     return false;
   }
+  const slug = body?.slug;
+  if (requireName && (slug === undefined || slug === null || !String(slug).trim())) {
+    reply.code(400).send({ detail: 'Collection slug is required' });
+    return false;
+  }
+  if (slug !== undefined && slug !== null) {
+    if (!String(slug).trim()) {
+      reply.code(400).send({ detail: 'Collection slug is required' });
+      return false;
+    }
+    if (!assertSlug(reply, slug)) {
+      return false;
+    }
+  }
   if (body?.sort_order !== undefined && !Number.isFinite(Number(body.sort_order))) {
     reply.code(400).send({ detail: 'sort_order must be a number' });
+    return false;
+  }
+  if (body?.description !== undefined && isDescriptionTooLong(body.description)) {
+    reply.code(400).send({ detail: 'Collection description is too long' });
     return false;
   }
   return true;
 }
 
+function mutateCollection(reply, action) {
+  try {
+    return action();
+  } catch (error) {
+    if (isSlugConflictError(error)) {
+      reply.code(409).send({ detail: 'Collection slug already exists' });
+      return null;
+    }
+    throw error;
+  }
+}
+
 async function collectionsRoutes(fastify) {
   fastify.get('/', {
-    preHandler: [fastify.authenticate]
-  }, async () => {
-    return { collections: CollectionModel.listAllWithUsage().map(formatCollection) };
+    preHandler: [fastify.optionalAuth]
+  }, async (request) => {
+    return { collections: CollectionModel.listAllWithUsage(request.user).map(formatCollection) };
   });
 
-  fastify.get('/:collection_id', {
-    preHandler: [fastify.authenticate]
+  fastify.get('/:collection_ref', {
+    preHandler: [fastify.optionalAuth]
   }, async (request, reply) => {
-    const collectionId = parsePositiveId(request.params.collection_id);
-    if (!collectionId) {
-      return reply.code(400).send({ detail: 'Invalid collection id' });
-    }
-
-    const collection = CollectionModel.findById(collectionId);
+    const collection = CollectionModel.resolveRef(request.params.collection_ref);
     if (!collection) {
       return reply.code(404).send({ detail: 'Collection not found' });
     }
 
-    const skills = CollectionModel.listCollectionSkills(collectionId, request.user).map(formatSkill);
-    return { collection: formatCollection(collection), skills, total: skills.length };
+    const includePrivate = request.query?.include_private === '1' && request.user?.role === 'admin';
+    const rawSkills = includePrivate
+      ? CollectionModel.listAllCollectionSkills(collection.id)
+      : CollectionModel.listCollectionSkills(collection.id, request.user);
+    const skills = rawSkills.map(formatSkill);
+    const formattedCollection = formatCollection(collection);
+    formattedCollection.skill_count = skills.length;
+    return { collection: formattedCollection, skills, total: skills.length };
   });
 
-  fastify.get('/:collection_id/download', {
-    preHandler: [fastify.authenticate]
+  fastify.get('/:collection_ref/download', {
+    preHandler: [fastify.optionalAuth]
   }, async (request, reply) => {
-    const collectionId = parsePositiveId(request.params.collection_id);
-    if (!collectionId) {
-      return reply.code(400).send({ detail: 'Invalid collection id' });
-    }
-
-    const collection = CollectionModel.findById(collectionId);
+    const collection = CollectionModel.resolveRef(request.params.collection_ref);
     if (!collection) {
       return reply.code(404).send({ detail: 'Collection not found' });
     }
 
-    const skills = CollectionModel.listCollectionSkills(collectionId, request.user);
+    const skills = CollectionModel.listCollectionSkills(collection.id, request.user);
     const { buffer, fileName, packagedSkills } = buildCollectionZipBuffer(collection, skills);
 
     if (packagedSkills.length === 0) {
@@ -104,6 +150,7 @@ async function collectionsRoutes(fastify) {
     }
 
     incrementDownloadCounts(packagedSkills);
+    CollectionModel.incrementDownloadCount(collection.id);
 
     reply.header('Content-Type', 'application/zip');
     reply.header('Content-Disposition', `attachment; filename="${fileName}"`);
@@ -115,67 +162,68 @@ async function collectionsRoutes(fastify) {
   }, async (request, reply) => {
     if (!assertMutableFields(reply, request.body, true)) return reply;
 
-    const collection = CollectionModel.create({
+    const collection = mutateCollection(reply, () => CollectionModel.create({
       name: request.body.name,
+      slug: request.body.slug,
       description: request.body.description,
       sortOrder: request.body.sort_order,
       actorId: request.user.id
-    });
+    }));
+    if (!collection) return reply;
     return reply.code(201).send({ ok: true, collection: formatCollection(collection) });
   });
 
-  fastify.patch('/:collection_id', {
+  fastify.patch('/:collection_ref', {
     preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
-    const collectionId = parsePositiveId(request.params.collection_id);
-    if (!collectionId) {
-      return reply.code(400).send({ detail: 'Invalid collection id' });
-    }
-    if (!assertMutableFields(reply, request.body, false)) return reply;
-
-    const collection = CollectionModel.update(collectionId, {
-      name: request.body?.name,
-      description: request.body?.description,
-      sortOrder: request.body?.sort_order,
-      actorId: request.user.id
-    });
+    const collection = CollectionModel.resolveRef(request.params.collection_ref);
     if (!collection) {
       return reply.code(404).send({ detail: 'Collection not found' });
     }
-    return { ok: true, collection: formatCollection(collection) };
+    if (!assertMutableFields(reply, request.body, false)) return reply;
+
+    const updated = mutateCollection(reply, () => CollectionModel.update(collection.id, {
+      name: request.body?.name,
+      slug: request.body?.slug,
+      description: request.body?.description,
+      sortOrder: request.body?.sort_order,
+      actorId: request.user.id
+    }));
+    if (!updated) return reply;
+    return { ok: true, collection: formatCollection(updated) };
   });
 
-  fastify.delete('/:collection_id', {
+  fastify.delete('/:collection_ref', {
     preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
-    const collectionId = parsePositiveId(request.params.collection_id);
-    if (!collectionId) {
-      return reply.code(400).send({ detail: 'Invalid collection id' });
+    const collection = CollectionModel.resolveRef(request.params.collection_ref);
+    if (!collection) {
+      return reply.code(404).send({ detail: 'Collection not found' });
     }
 
-    const deleted = CollectionModel.delete(collectionId);
+    const deleted = CollectionModel.delete(collection.id);
     if (!deleted) {
       return reply.code(404).send({ detail: 'Collection not found' });
     }
     return { ok: true };
   });
 
-  fastify.put('/:collection_id/skills', {
+  fastify.put('/:collection_ref/skills', {
     preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
-    const collectionId = parsePositiveId(request.params.collection_id);
+    const collection = CollectionModel.resolveRef(request.params.collection_ref);
     const { skill_ids: skillIds } = request.body || {};
 
-    if (!collectionId) {
-      return reply.code(400).send({ detail: 'Invalid collection id' });
+    if (!collection) {
+      return reply.code(404).send({ detail: 'Collection not found' });
     }
     if (skillIds !== undefined && !Array.isArray(skillIds)) {
       return reply.code(400).send({ detail: 'skill_ids must be an array' });
     }
 
     try {
-      const skills = CollectionModel.replaceCollectionSkills(collectionId, skillIds || [], request.user.id).map(formatSkill);
-      return { ok: true, collection_id: collectionId, skills };
+      const skills = CollectionModel.replaceCollectionSkills(collection.id, skillIds || [], request.user.id).map(formatSkill);
+      return { ok: true, collection_id: collection.id, skills };
     } catch (error) {
       const message = String(error && error.message ? error.message : error);
       if (message.includes('Collection not found')) {

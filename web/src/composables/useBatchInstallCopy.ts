@@ -1,10 +1,10 @@
 import { ref } from 'vue'
 
 export function useBatchInstallCopy() {
-  const copiedId = ref<number | null>(null)
+  const copiedSlug = ref<string | null>(null)
 
-  async function copyCollectionInstallCommand(collectionId: number) {
-    const cmd = `skb install --collection ${collectionId}`
+  async function copyCollectionInstallCommand(collectionSlug: string) {
+    const cmd = `skb install --collection ${collectionSlug}`
     try {
       await navigator.clipboard.writeText(cmd)
     } catch {
@@ -15,11 +15,11 @@ export function useBatchInstallCopy() {
       document.execCommand('copy')
       document.body.removeChild(el)
     }
-    copiedId.value = collectionId
+    copiedSlug.value = collectionSlug
     setTimeout(() => {
-      copiedId.value = null
+      copiedSlug.value = null
     }, 2000)
   }
 
-  return { copiedId, copyCollectionInstallCommand }
+  return { copiedSlug, copyCollectionInstallCommand }
 }

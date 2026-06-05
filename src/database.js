@@ -251,7 +251,9 @@ Object.defineProperty(db, 'inTransaction', {
 const migrations = [
   require('./migrations/005-skill-favorites-tags-downloads-super-admin'),
   require('./migrations/006-skill-visibility'),
-  require('./migrations/007-collections')
+  require('./migrations/007-collections'),
+  require('./migrations/008-collection-download-count'),
+  require('./migrations/009-collection-slug')
 ];
 
 function ensureSchemaMigrationsTable() {

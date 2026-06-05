@@ -11,9 +11,7 @@
 
     <div v-if="isLoading" class="collections-shelf" :class="shelfLayoutClass(3)">
       <div v-for="i in 3" :key="i" class="collection-shelf-item">
-        <div class="collection-book-skeleton">
-          <div class="skeleton-face"></div>
-        </div>
+        <CollectionBookCover loading size="sm" />
       </div>
     </div>
 
@@ -30,12 +28,10 @@
         class="collection-shelf-item collection-shelf-link"
       >
         <CollectionBookCover
-          :name="collection.name"
-          :skill-count="collection.skill_count ?? 0"
-          :color-index="collection.id"
+          :collection="collection"
           size="sm"
+          interactive
         />
-        <p class="collection-shelf-desc">{{ collection.description || t('state.noDesc') }}</p>
       </router-link>
     </div>
   </main>
@@ -125,28 +121,6 @@ onMounted(async () => {
   color: inherit;
 }
 
-.collection-shelf-link:hover :deep(.book-cover) {
-  transform: translateY(-6px) rotate(-1deg);
-  filter:
-    drop-shadow(0 16px 28px rgba(15, 23, 42, 0.14))
-    drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08));
-}
-
-.collection-shelf-desc {
-  margin: 1rem 0 0;
-  font-size: 0.8125rem;
-  line-height: 1.45;
-  color: var(--color-base-400);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.collection-shelf-link:hover .collection-shelf-desc {
-  color: var(--color-base-300);
-}
-
 .collections-empty {
   padding: 4rem 1rem;
   text-align: center;
@@ -159,26 +133,4 @@ onMounted(async () => {
   opacity: 0.35;
 }
 
-.collection-book-skeleton {
-  display: flex;
-  width: 11.5rem;
-  min-height: 15rem;
-  border-radius: 0.375rem;
-  overflow: hidden;
-  background: var(--color-base-900);
-  border: 1px solid var(--color-base-800);
-}
-
-.skeleton-face {
-  flex: 1;
-  width: 100%;
-  background: linear-gradient(90deg, var(--color-base-900) 25%, var(--color-base-800) 50%, var(--color-base-900) 75%);
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-}
-
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
 </style>

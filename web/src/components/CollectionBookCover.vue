@@ -1,15 +1,29 @@
 <template>
-  <div class="book-cover" :class="[`book-cover--${size}`]">
-    <div class="book-face" :style="faceStyle">
-      <span class="book-badge">COLLECTION</span>
-      <h2 class="book-title">{{ name }}</h2>
-      <p v-if="description && size === 'lg'" class="book-desc">{{ description }}</p>
-      <div class="book-footer">
-        <Package class="book-icon" :size="size === 'lg' ? 16 : 14" aria-hidden="true" />
-        <span class="book-count">{{ t('index.skillsCount', { count: skillCount }) }}</span>
-      </div>
+  <div
+    class="book-cover"
+    :class="[
+      `book-cover--${size}`,
+      {
+        'book-cover--interactive': interactive,
+        'book-cover--loading': loading,
+      },
+    ]"
+  >
+    <div v-if="loading" class="book-face book-face--skeleton">
+      <div class="skeleton-shimmer" aria-hidden="true"></div>
     </div>
-    <div class="book-pages" aria-hidden="true"></div>
+    <template v-else>
+      <div class="book-face" :style="faceStyle">
+        <span class="book-badge">COLLECTION</span>
+        <h2 class="book-title">{{ displayName }}</h2>
+        <p v-if="displayDescription" class="book-desc">{{ displayDescription }}</p>
+        <div class="book-footer">
+          <Package class="book-icon" :size="size === 'lg' ? 16 : 14" aria-hidden="true" />
+          <span class="book-count">{{ t('index.skillsCount', { count: displaySkillCount }) }}</span>
+        </div>
+      </div>
+      <div class="book-pages" aria-hidden="true"></div>
+    </template>
   </div>
 </template>
 
@@ -18,22 +32,35 @@ import { computed } from 'vue'
 import { Package } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
 import { getCollectionCoverPreset } from '@/composables/useCollectionCoverColors'
+import type { Collection } from '@/services/api'
+
+type CollectionCoverSource = Pick<Collection, 'id' | 'name' | 'description' | 'skill_count'>
 
 const props = withDefaults(defineProps<{
-  name: string
+  collection?: CollectionCoverSource
+  name?: string
   description?: string | null
   skillCount?: number
   colorIndex?: number
   size?: 'sm' | 'lg'
+  loading?: boolean
+  interactive?: boolean
 }>(), {
-  skillCount: 0,
+  skillCount: undefined,
   colorIndex: 0,
   size: 'sm',
+  loading: false,
+  interactive: false,
 })
 
 const { t } = useI18n()
 
-const preset = computed(() => getCollectionCoverPreset(props.colorIndex))
+const displayName = computed(() => props.collection?.name ?? props.name ?? '')
+const displayDescription = computed(() => props.collection?.description ?? props.description ?? null)
+const displaySkillCount = computed(() => props.skillCount ?? props.collection?.skill_count ?? 0)
+const displayColorIndex = computed(() => props.collection?.id ?? props.colorIndex ?? 0)
+
+const preset = computed(() => getCollectionCoverPreset(displayColorIndex.value))
 
 const faceStyle = computed(() => ({
   background: `
@@ -59,6 +86,13 @@ const faceStyle = computed(() => ({
     drop-shadow(0 10px 22px rgba(15, 23, 42, 0.1))
     drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06));
   transition: transform 0.25s ease, filter 0.25s ease;
+}
+
+.book-cover--interactive:hover {
+  transform: translateY(-6px) rotate(-1deg);
+  filter:
+    drop-shadow(0 16px 28px rgba(15, 23, 42, 0.14))
+    drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08));
 }
 
 .book-cover--sm {
@@ -87,6 +121,26 @@ const faceStyle = computed(() => ({
 
 .book-cover--sm .book-face {
   min-height: 15rem;
+}
+
+.book-face--skeleton {
+  background: var(--color-base-900);
+  border-color: var(--color-base-800);
+  box-shadow: none;
+  overflow: hidden;
+}
+
+.skeleton-shimmer {
+  flex: 1;
+  width: 100%;
+  background: linear-gradient(90deg, var(--color-base-900) 25%, var(--color-base-800) 50%, var(--color-base-900) 75%);
+  background-size: 200% 100%;
+  animation: book-cover-skeleton 1.5s infinite;
+}
+
+@keyframes book-cover-skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
 }
 
 .book-pages {
@@ -144,9 +198,10 @@ const faceStyle = computed(() => ({
   line-height: 1.45;
   color: var(--book-muted);
   display: -webkit-box;
-  -webkit-line-clamp: 4;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  text-overflow: ellipsis;
   flex: 1;
 }
 
