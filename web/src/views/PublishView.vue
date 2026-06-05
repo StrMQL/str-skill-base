@@ -52,84 +52,97 @@
               {{ error }}
             </div>
             <!-- GitHub 导入 -->
-            <div v-show="publishMode === 'github'" class="form-group rounded-lg border border-base-800 p-5 space-y-4 bg-base-900/40">
+            <div v-show="publishMode === 'github'" class="github-import-panel form-group">
+              <div class="github-import-header">
+                <div class="min-w-0">
+                  <label class="form-label font-mono text-neon-400 mb-1 block">{{ t('publish.githubHeading') }}</label>
+                  <p class="github-import-hint">{{ t('publish.githubHint') }}</p>
+                </div>
+                <button
+                  type="button"
+                  class="github-connect-action"
+                  :disabled="githubConnect.state === 'checking'"
+                  @click="fetchGithubConnectivity"
+                >
+                  {{ githubConnect.state === 'checking' ? t('publish.githubConnectChecking') : t('publish.githubConnectRetry') }}
+                </button>
+              </div>
+
               <div
-                class="github-connect-banner font-mono text-sm rounded-lg px-4 py-3 border"
+                class="github-connect-banner font-mono text-sm rounded-lg border"
                 :class="githubConnectBannerClass"
               >
-                <div class="flex flex-wrap items-center justify-between gap-3">
-                  <div class="min-w-0 flex-1 space-y-1">
-                    <p class="font-medium leading-snug">{{ githubConnectTitle }}</p>
-                    <p v-if="githubConnectDetailLine" class="text-xs opacity-90 break-all">{{ githubConnectDetailLine }}</p>
-                    <p v-if="publishMode === 'github' && githubConnect.state === 'fail'" class="text-xs opacity-80 mt-2">
-                      {{ t('publish.githubConnectHintNetwork') }}
-                    </p>
+                <p class="font-medium leading-snug">{{ githubConnectTitle }}</p>
+                <p v-if="githubConnectDetailLine" class="text-xs opacity-90 break-all">{{ githubConnectDetailLine }}</p>
+                <p v-if="publishMode === 'github' && githubConnect.state === 'fail'" class="text-xs opacity-80 mt-2">
+                  {{ t('publish.githubConnectHintNetwork') }}
+                </p>
+              </div>
+
+              <div class="github-source-card">
+                <div>
+                  <label for="github-source" class="github-field-label required">{{ t('publish.tabGithub') }}</label>
+                  <input
+                    id="github-source"
+                    v-model="githubSource"
+                    type="text"
+                    class="rounded-lg px-4 py-2.5 w-full github-source-input"
+                    :disabled="isPublishing || isPreviewLoading"
+                    :placeholder="t('publish.githubSourcePlaceholder')"
+                    autocomplete="off"
+                  >
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label class="github-field-label">{{ t('publish.githubRef') }}</label>
+                    <input
+                      v-model="githubRef"
+                      type="text"
+                      class="rounded-lg px-4 py-2.5 w-full"
+                      :disabled="isPublishing || isPreviewLoading"
+                      :placeholder="t('publish.githubRefPlaceholder')"
+                      autocomplete="off"
+                    >
                   </div>
+                  <div>
+                    <label class="github-field-label">{{ t('publish.githubSubpath') }}</label>
+                    <input
+                      v-model="githubSubpath"
+                      type="text"
+                      class="rounded-lg px-4 py-2.5 w-full"
+                      :disabled="isPublishing || isPreviewLoading"
+                      :placeholder="t('publish.githubSubpathPlaceholder')"
+                      autocomplete="off"
+                    >
+                  </div>
+                </div>
+
+                <div class="github-import-actions">
                   <button
                     type="button"
-                    class="shrink-0 text-xs px-3 py-1.5 rounded-full border border-current/30 hover:bg-white/5 transition-colors"
-                    :disabled="githubConnect.state === 'checking'"
-                    @click="fetchGithubConnectivity"
+                    class="btn btn-primary px-4 py-2 rounded-lg"
+                    :disabled="isPublishing || isPreviewLoading || !githubSource.trim()"
+                    @click="runGithubPreview"
                   >
-                    {{ githubConnect.state === 'checking' ? t('publish.githubConnectChecking') : t('publish.githubConnectRetry') }}
+                    {{ isPreviewLoading ? t('publish.githubPreviewing') : t('publish.githubPreview') }}
+                  </button>
+                  <button
+                    v-if="githubPreview"
+                    type="button"
+                    class="github-clear-action"
+                    @click="clearGithubImport"
+                  >
+                    {{ t('publish.githubClear') }}
                   </button>
                 </div>
               </div>
 
-              <label class="form-label font-mono text-neon-400 mb-0 block">{{ t('publish.githubHeading') }}</label>
-              <p class="text-sm text-base-400 font-mono">{{ t('publish.githubHint') }}</p>
-              <input
-                v-model="githubSource"
-                type="text"
-                class="rounded-lg px-4 py-2.5 w-full"
-                :disabled="isPublishing || isPreviewLoading"
-                :placeholder="t('publish.githubSourcePlaceholder')"
-                autocomplete="off"
-              >
-              <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label class="form-label font-mono text-base-400 mb-1 block text-xs">{{ t('publish.githubRef') }}</label>
-                  <input
-                    v-model="githubRef"
-                    type="text"
-                    class="rounded-lg px-4 py-2.5 w-full"
-                    :disabled="isPublishing || isPreviewLoading"
-                    :placeholder="t('publish.githubRefPlaceholder')"
-                    autocomplete="off"
-                  >
-                </div>
-                <div>
-                  <label class="form-label font-mono text-base-400 mb-1 block text-xs">{{ t('publish.githubSubpath') }}</label>
-                  <input
-                    v-model="githubSubpath"
-                    type="text"
-                    class="rounded-lg px-4 py-2.5 w-full"
-                    :disabled="isPublishing || isPreviewLoading"
-                    :placeholder="t('publish.githubSubpathPlaceholder')"
-                    autocomplete="off"
-                  >
-                </div>
+              <div v-if="githubPreview" class="github-preview-card">
+                <div class="github-preview-kicker">{{ t('publish.githubPreviewOk', { id: githubTargetId }) }}</div>
+                <p v-if="githubRepoLabel" class="github-preview-repo">{{ githubRepoLabel }}</p>
+                <p v-if="githubConflictMessage" class="github-conflict-message">{{ githubConflictMessage }}</p>
               </div>
-              <div class="flex flex-wrap gap-3 items-center">
-                <button
-                  type="button"
-                  class="btn btn-secondary px-4 py-2 rounded-lg"
-                  :disabled="isPublishing || isPreviewLoading || !githubSource.trim()"
-                  @click="runGithubPreview"
-                >
-                  {{ isPreviewLoading ? t('publish.githubPreviewing') : t('publish.githubPreview') }}
-                </button>
-                <button
-                  v-if="githubPreview"
-                  type="button"
-                  class="text-sm font-mono text-base-400 hover:text-fg-strong underline"
-                  @click="clearGithubImport"
-                >
-                  {{ t('publish.githubClear') }}
-                </button>
-              </div>
-              <p v-if="githubRepoLabel" class="text-xs font-mono text-base-500">{{ githubRepoLabel }}</p>
-              <p v-if="githubConflictMessage" class="text-sm text-amber-400/90 font-mono">{{ githubConflictMessage }}</p>
             </div>
 
             <!-- 文件上传 -->
@@ -1328,8 +1341,139 @@ select:disabled {
   box-shadow: 0 0 0 1px rgba(var(--color-neon-rgb), 0.35);
 }
 
+.github-import-panel {
+  border: 1px solid var(--color-base-800);
+  border-radius: 1rem;
+  padding: 1.25rem;
+  background:
+    radial-gradient(circle at top right, rgba(var(--color-neon-rgb), 0.08), transparent 36%),
+    color-mix(in srgb, var(--color-base-900) 82%, transparent);
+}
+
+.github-import-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.github-import-hint {
+  max-width: 38rem;
+  color: var(--color-base-400);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+}
+
+.github-connect-action {
+  flex-shrink: 0;
+  border: 1px solid var(--color-base-700);
+  border-radius: 999px;
+  padding: 0.45rem 0.75rem;
+  background: color-mix(in srgb, var(--color-base-950) 72%, transparent);
+  color: var(--color-base-300);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+
+.github-connect-action:hover:not(:disabled) {
+  border-color: rgba(var(--color-neon-rgb), 0.45);
+  color: var(--color-fg-strong);
+  background: rgba(var(--color-neon-rgb), 0.06);
+}
+
+.github-connect-action:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
 .github-connect-banner {
-  margin-bottom: 0.25rem;
+  margin-bottom: 1rem;
+  padding: 0.75rem 0.875rem;
+}
+
+.github-source-card {
+  display: grid;
+  gap: 1rem;
+  border: 1px solid rgba(var(--color-neon-rgb), 0.24);
+  border-radius: 0.875rem;
+  padding: 1rem;
+  background: color-mix(in srgb, var(--color-base-950) 72%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.03);
+}
+
+.github-field-label {
+  display: block;
+  margin-bottom: 0.375rem;
+  color: var(--color-base-300);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.github-field-label.required::after {
+  content: ' *';
+  color: var(--color-neon-400);
+}
+
+.github-source-input {
+  min-height: 2.875rem;
+}
+
+.github-import-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.github-clear-action {
+  border: none;
+  background: transparent;
+  color: var(--color-base-400);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+
+.github-clear-action:hover {
+  color: var(--color-fg-strong);
+}
+
+.github-preview-card {
+  margin-top: 1rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.875rem;
+  padding: 0.875rem 1rem;
+  background: color-mix(in srgb, var(--color-base-950) 52%, transparent);
+}
+
+.github-preview-kicker {
+  color: var(--color-neon-400);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.github-preview-repo {
+  margin-top: 0.375rem;
+  color: var(--color-base-400);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.github-conflict-message {
+  margin-top: 0.75rem;
+  color: #fcd34d;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  line-height: 1.65;
 }
 .github-connect-idle {
   border-color: var(--color-base-800);
@@ -1350,5 +1494,81 @@ select:disabled {
   border-color: rgba(251, 191, 36, 0.4);
   background: rgba(251, 191, 36, 0.08);
   color: #fcd34d;
+}
+
+html[data-theme="light"] .github-import-panel {
+  border-color: #d4d4d8;
+  background:
+    radial-gradient(circle at top right, rgba(5, 150, 105, 0.08), transparent 34%),
+    #ffffff;
+  box-shadow: 0 14px 34px -24px rgba(15, 23, 42, 0.35);
+}
+
+html[data-theme="light"] .github-import-hint {
+  color: #52525b;
+}
+
+html[data-theme="light"] .github-connect-action {
+  border-color: #d4d4d8;
+  background: #fafafa;
+  color: #3f3f46;
+}
+
+html[data-theme="light"] .github-connect-action:hover:not(:disabled) {
+  border-color: #059669;
+  background: #ecfdf5;
+  color: #065f46;
+}
+
+html[data-theme="light"] .github-source-card {
+  border-color: #d4d4d8;
+  background: #ffffff;
+  box-shadow: 0 10px 28px -24px rgba(15, 23, 42, 0.45);
+}
+
+html[data-theme="light"] .github-field-label {
+  color: #3f3f46;
+}
+
+html[data-theme="light"] .github-preview-card {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
+}
+
+html[data-theme="light"] .github-preview-kicker {
+  color: #047857;
+}
+
+html[data-theme="light"] .github-preview-repo {
+  color: #52525b;
+}
+
+html[data-theme="light"] .github-connect-idle,
+html[data-theme="light"] .github-connect-checking {
+  border-color: #d4d4d8;
+  background: #fafafa;
+  color: #52525b;
+}
+
+html[data-theme="light"] .github-connect-ok {
+  border-color: #34d399;
+  background: #ecfdf5;
+  color: #047857;
+}
+
+html[data-theme="light"] .github-connect-fail {
+  border-color: #f59e0b;
+  background: #fffbeb;
+  color: #92400e;
+}
+
+@media (max-width: 640px) {
+  .github-import-header {
+    display: grid;
+  }
+
+  .github-connect-action {
+    width: 100%;
+  }
 }
 </style>

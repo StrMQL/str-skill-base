@@ -135,6 +135,7 @@ async function authPlugin(fastify, options) {
   // Optional authentication (not enforced, parse if present)
   fastify.decorate('optionalAuth', async function(request, reply) {
     try {
+      request.sessionStale = false;
       // Reuse authenticate logic but don't throw error
       const sessionId = request.cookies?.session_id;
       if (sessionId) {
@@ -143,6 +144,7 @@ async function authPlugin(fastify, options) {
           const user = db.prepare(`SELECT ${authUserColumns} FROM users WHERE id = ?`).get(session.userId);
           if (user && user.status !== 'disabled') { request.user = user; return; }
         }
+        request.sessionStale = true;
       }
       const authHeader = request.headers.authorization;
       if (authHeader?.startsWith('Bearer ')) {
