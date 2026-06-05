@@ -149,7 +149,15 @@
                 >
                   <p class="cli-install-help-title">{{ t('skill.cliInstallHelpTitle') }}</p>
                   <p class="cli-install-help-desc">{{ t('skill.cliInstallHelpDesc') }}</p>
-                  <code class="cli-install-help-code">npm install -g skill-base-cli</code>
+                  <button
+                    type="button"
+                    class="cli-install-help-code cli-install-help-code-btn"
+                    :title="t('skill.copyInstallHint')"
+                    @click.stop="copyCliPackageInstallCommand"
+                  >
+                    <span class="min-w-0 text-left">{{ CLI_PACKAGE_INSTALL_CMD }}</span>
+                    <Copy class="w-3 h-3 shrink-0 opacity-70" :stroke-width="2" aria-hidden="true" />
+                  </button>
                 </div>
               </div>
               <button
@@ -662,6 +670,8 @@ const installCliCommand = computed(() => {
   return `skb install ${id}`
 })
 
+const CLI_PACKAGE_INSTALL_CMD = 'npm install -g skill-base-cli'
+
 const showCliInstallHelp = ref(false)
 
 function closeCliInstallHelp() {
@@ -676,8 +686,7 @@ function onDocumentClickForCliHelp(e: MouseEvent) {
   closeCliInstallHelp()
 }
 
-async function copyInstallCommand() {
-  const text = installCliCommand.value
+async function copyTextToClipboard(text: string) {
   if (!text) return
   try {
     await navigator.clipboard.writeText(text)
@@ -700,6 +709,14 @@ async function copyInstallCommand() {
       document.body.removeChild(ta)
     }
   }
+}
+
+async function copyInstallCommand() {
+  await copyTextToClipboard(installCliCommand.value)
+}
+
+async function copyCliPackageInstallCommand() {
+  await copyTextToClipboard(CLI_PACKAGE_INSTALL_CMD)
 }
 
 // Version management
@@ -1871,7 +1888,11 @@ html[data-theme="light"] .card {
 }
 
 .cli-install-help-code {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.375rem;
+  width: 100%;
   padding: 0.375rem 0.5rem;
   border-radius: 0.375rem;
   background: var(--color-base-950);
@@ -1880,5 +1901,16 @@ html[data-theme="light"] .card {
   font-size: 0.6875rem;
   color: var(--color-neon-400);
   word-break: break-all;
+}
+
+.cli-install-help-code-btn {
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s, color 0.2s;
+}
+
+.cli-install-help-code-btn:hover {
+  border-color: rgba(var(--color-neon-rgb), 0.4);
+  background: rgba(var(--color-neon-rgb), 0.05);
+  color: var(--color-neon-400);
 }
 </style>
