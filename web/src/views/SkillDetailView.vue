@@ -75,13 +75,13 @@
           </div>
           <div class="flex items-start justify-between mb-6 group">
             <p class="text-base-400 text-sm leading-relaxed max-w-5xl whitespace-pre-wrap">
-              {{ currentVersionObj?.description || skill.description || t('state.noDesc') }}
+              {{ skill.description || t('state.noDesc') }}
             </p>
             <button
-              v-if="canManageCollaborators && currentVersionObj"
-              @click="openEditVersionModal(currentVersionObj, 'description')"
+              v-if="canManageCollaborators"
+              @click="openEditSkillDescription"
               class="opacity-0 group-hover:opacity-100 p-1.5 text-base-400 hover:text-neon-400 transition-all flex-shrink-0 bg-base-950 border border-base-800 rounded ml-4"
-              title="Edit Version Info"
+              :title="t('skill.editSkillDescriptionBtn')"
             >
               <Pencil class="w-4 h-4" :stroke-width="2" aria-hidden="true" />
             </button>
@@ -491,15 +491,19 @@
       <div class="modal-overlay"></div>
       <div class="modal-content">
         <div class="modal-header">
-          <h3>{{ editVersionMode === 'description' ? t('skill.editVersionTitleDesc') : t('skill.editVersionTitleChangelog') }} ({{ editVersionForm.version }})</h3>
+          <h3>
+            {{ editVersionMode === 'description'
+              ? t('skill.editSkillDescriptionTitle')
+              : `${t('skill.editVersionTitleChangelog')} (${editVersionForm.version})` }}
+          </h3>
           <button class="modal-close" @click="showEditVersionModal = false">&times;</button>
         </div>
         <div class="modal-body">
           <div v-if="editVersionMode === 'description'" class="form-group">
-            <label>{{ t('skill.editVersionLabelDescription') }}</label>
+            <label>{{ t('skill.editSkillDescriptionLabel') }}</label>
             <textarea
               v-model="editVersionForm.description"
-              :placeholder="t('skill.editVersionPlaceholderDescription')"
+              :placeholder="t('skill.editSkillDescriptionPlaceholder')"
               class="form-input min-h-[100px]"
             ></textarea>
           </div>
@@ -630,9 +634,6 @@ async function copyInstallCommand() {
 // Version management
 const versions = ref<SkillVersion[]>([])
 const currentVersion = ref<string>('')
-const currentVersionObj = computed(() => {
-  return versions.value.find(v => v.version === currentVersion.value)
-})
 const isLoadingZip = ref(false)
 const currentZip = ref<any>(null)
 
@@ -1170,20 +1171,22 @@ function handleEscKey(e: KeyboardEvent) {
   }
 }
 
-function openEditVersionModal(v: SkillVersion, mode: 'description' | 'changelog') {
+function openEditSkillDescription() {
+  editVersionMode.value = 'description'
+  editVersionForm.value = {
+    version: '',
+    description: skill.value?.description ?? '',
+    changelog: ''
+  }
+  showEditVersionModal.value = true
+}
+
+function openEditVersionModal(v: SkillVersion, mode: 'changelog') {
   editVersionMode.value = mode
-  if (mode === 'description') {
-    editVersionForm.value = {
-      version: v.version,
-      description: skill.value?.description ?? '',
-      changelog: ''
-    }
-  } else {
-    editVersionForm.value = {
-      version: v.version,
-      description: v.description || '',
-      changelog: v.changelog || ''
-    }
+  editVersionForm.value = {
+    version: v.version,
+    description: '',
+    changelog: v.changelog || ''
   }
   showEditVersionModal.value = true
 }
