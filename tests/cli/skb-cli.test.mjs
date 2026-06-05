@@ -11,6 +11,7 @@ test('skb --help exits 0 and prints usage', () => {
   assert.ok(out.includes('init') && out.includes('login'), 'expected subcommands');
   assert.ok(out.includes('ui'), 'expected ui subcommand');
   assert.ok(out.includes('whoami'), 'expected whoami subcommand');
+  assert.ok(out.includes('--collection'), 'expected --collection option');
 });
 
 test('skb -h same as --help', () => {

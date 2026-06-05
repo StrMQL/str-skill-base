@@ -131,11 +131,13 @@ skb search "react component"
 ```bash
 skb install <skill_id>
 skb install <skill_id>@<version>
+skb install --collection <collection_id>
 ```
 
 参数：
 
-- `target`：Skill ID，或 `skill_id@version`
+- `target`：Skill ID，或 `skill_id@version`（与 `--collection` 二选一）
+- `--collection <id>`：安装集合内全部 Skill（一次下载集合 zip 并解压）
 - `-d, --dir <directory>`：直接安装到指定目录
 - `-i, --ide <ide>`：按 IDE 规则自动选择目标目录
 - `-g, --global`：安装到全局 IDE 配置目录，仅部分 IDE 支持
@@ -148,6 +150,9 @@ skb install vue-best-practices
 
 # 安装指定版本
 skb install vue-best-practices@v20260115.120000
+
+# 安装集合内全部 Skill
+skb install --collection 1 --ide cursor
 
 # 安装到指定目录
 skb install vue-best-practices -d ./my-skills
@@ -187,6 +192,8 @@ skb install git-commit-rules --ide cursor --global
 - `roo`（`<项目根>/.roo/skills`，全局：`~/.roo/skills`）
 
 若目标目录下已存在同名 Skill 文件夹，`skb install` 会先询问是否覆盖；确认后会删除旧目录再解压安装。
+
+安装集合时，若存在多个同名 Skill 目录，会列出全部冲突路径并一次性询问是否全部覆盖；取消则不会安装任何 Skill。
 
 安装成功后，CLI 会把这些信息记录到本地：
 

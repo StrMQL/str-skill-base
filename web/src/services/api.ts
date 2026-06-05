@@ -160,6 +160,17 @@ export interface Tag {
   usage_count?: number
 }
 
+export interface Collection {
+  id: number
+  name: string
+  description?: string | null
+  sort_order?: number
+  skill_count?: number
+  created_at?: string
+  updated_at?: string
+  created_by?: { id: number; username: string | null; name: string | null }
+}
+
 export const authApi = {
   login: (data: LoginRequest) => apiPost<{ user: User }>('/auth/login', data),
   logout: () => apiPost('/auth/logout'),
@@ -192,6 +203,7 @@ export interface Skill {
   download_count: number
   is_favorited?: boolean
   tags: Tag[]
+  collections: Collection[]
 }
 
 export interface SkillVersion {
@@ -278,6 +290,19 @@ export const tagsApi = {
   create: (name: string) => apiPost<{ ok: boolean; tag: Tag }>('/tags', { name }),
   update: (id: number, name: string) => apiPatch<{ ok: boolean; tag: Tag }>(`/tags/${id}`, { name }),
   delete: (id: number) => apiDelete<{ ok: boolean }>(`/tags/${id}`),
+}
+
+export const collectionsApi = {
+  list: () => apiGet<{ collections: Collection[] }>('/collections'),
+  get: (id: number) => apiGet<{ collection: Collection; skills: Skill[]; total: number }>(`/collections/${id}`),
+  downloadUrl: (id: number) => `${API_BASE}/collections/${id}/download`,
+  create: (data: { name: string; description?: string; sort_order?: number }) =>
+    apiPost<{ ok: boolean; collection: Collection }>('/collections', data),
+  update: (id: number, data: { name?: string; description?: string; sort_order?: number }) =>
+    apiPatch<{ ok: boolean; collection: Collection }>(`/collections/${id}`, data),
+  delete: (id: number) => apiDelete<{ ok: boolean }>(`/collections/${id}`),
+  replaceSkills: (id: number, skill_ids: string[]) =>
+    apiPut<{ ok: boolean; collection_id: number; skills: Skill[] }>(`/collections/${id}/skills`, { skill_ids }),
 }
 
 // ===== Collaborators API =====

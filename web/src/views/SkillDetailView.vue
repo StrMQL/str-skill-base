@@ -85,6 +85,9 @@
             <span class="skill-meta-chip">{{ skill.favorite_count }} {{ t('skill.favoriteCount') }}</span>
             <span class="skill-meta-chip">{{ skill.download_count }} {{ t('skill.downloadCount') }}</span>
             <span v-for="tag in skill.tags" :key="tag.id" class="skill-tag-chip">{{ tag.name }}</span>
+            <span v-for="collection in skill.collections || []" :key="collection.id" class="skill-collection-chip">
+              {{ collection.name }}
+            </span>
             <button
               v-if="canEditTags && showTagEditButton"
               type="button"
@@ -1511,7 +1514,8 @@ html[data-theme="light"] .card {
 }
 
 .skill-meta-chip,
-.skill-tag-chip {
+.skill-tag-chip,
+.skill-collection-chip {
   display: inline-flex;
   align-items: center;
   border-radius: 9999px;
@@ -1571,6 +1575,12 @@ html[data-theme="light"] .card {
   color: var(--color-neon-400);
   background: rgba(var(--color-neon-rgb), 0.08);
   border: 1px solid rgba(var(--color-neon-rgb), 0.2);
+}
+
+.skill-collection-chip {
+  color: #fcd34d;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.22);
 }
 
 .tag-option-row {

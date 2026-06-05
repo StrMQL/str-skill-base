@@ -70,6 +70,10 @@
                 <Tags :size="16" :stroke-width="2" aria-hidden="true" />
                 {{ t('nav.tagAdmin') }}
               </router-link>
+              <router-link v-if="authStore.isAdmin" to="/admin/collections" class="navbar-user-menu-item" @click="showUserMenu = false">
+                <Package :size="16" :stroke-width="2" aria-hidden="true" />
+                {{ t('nav.collectionAdmin') }}
+              </router-link>
               <div class="navbar-user-menu-divider"></div>
               <button class="navbar-user-menu-item navbar-user-logout" @click="logout">
                 <LogOut :size="16" :stroke-width="2" aria-hidden="true" />
@@ -128,12 +132,13 @@ import {
   LogOut,
 } from 'lucide-vue-next'
 
-type NavMenuIconName = 'home' | 'publish' | 'layout'
+type NavMenuIconName = 'home' | 'publish' | 'collections' | 'layout'
 
 const navIconMap = {
   home: Home,
   publish: Upload,
-  layout: LayoutGrid
+  collections: LayoutGrid,
+  layout: LayoutGrid,
 } as const
 
 interface NavItem {
@@ -177,12 +182,25 @@ const navItems = computed(() => {
         { href: '/publish', label: 'Publish', i18n: 'nav.publish' }
       ]
     : props.items
-  
-  return items.map(item => ({
+
+  const mapped = items.map(item => ({
     ...item,
     label: item.i18n ? t(item.i18n as any) : item.label,
     icon: item.icon ?? inferNavIcon(item.href)
   }))
+
+  const result: typeof mapped = []
+  for (const item of mapped) {
+    result.push(item)
+    if (normalizePath(item.href) === '/') {
+      result.push({
+        href: '/collections',
+        label: t('nav.collections'),
+        icon: 'collections' as const,
+      })
+    }
+  }
+  return result
 })
 
 function normalizePath(path: string): string {
@@ -197,12 +215,18 @@ function normalizePath(path: string): string {
 function inferNavIcon(href: string): NavMenuIconName {
   const p = normalizePath(href)
   if (p === '/') return 'home'
+  if (p === '/collections' || p.startsWith('/collections/')) return 'collections'
   if (p === '/publish') return 'publish'
   return 'layout'
 }
 
 function isActiveItem(href: string): boolean {
-  return normalizePath(href) === normalizePath(props.currentPath)
+  const current = normalizePath(props.currentPath)
+  const target = normalizePath(href)
+  if (target === '/collections') {
+    return current === '/collections' || current.startsWith('/collections/')
+  }
+  return target === current
 }
 
 function toggleMobileMenu() {
@@ -221,16 +245,12 @@ function toggleColorMode() {
 
 function toggleLangMenu() {
   showLangMenu.value = !showLangMenu.value
-  if (showLangMenu.value) {
-    showUserMenu.value = false
-  }
+  if (showLangMenu.value) showUserMenu.value = false
 }
 
 function toggleUserMenu() {
   showUserMenu.value = !showUserMenu.value
-  if (showUserMenu.value) {
-    showLangMenu.value = false
-  }
+  if (showUserMenu.value) showLangMenu.value = false
 }
 
 function setLang(lang: 'zh' | 'en') {

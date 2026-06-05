@@ -63,8 +63,12 @@ const S = {
     en: 'Search for Skills'
   },
   install: {
-    zh: '安装 Skill（支持 name@version）',
-    en: 'Install a Skill (supports name@version)'
+    zh: '安装 Skill（支持 name@version）或集合（--collection）',
+    en: 'Install a Skill (supports name@version) or a collection (--collection)'
+  },
+  installCollection: {
+    zh: '安装集合内全部 Skill（集合 ID）',
+    en: 'Install all skills in a collection (collection id)'
   },
   installDir: {
     zh: '解压到的目标目录',
@@ -174,12 +178,13 @@ program
   .action(search);
 
 program
-  .command('install <target>')
+  .command('install [target]')
   .description(pickMessage(S.install))
   .option('-d, --dir <directory>', pickMessage(S.installDir))
   .option('-i, --ide <agent>', installIdeOptionDescription())
   .option('-a, --agent <agent>', installIdeOptionDescription())
   .option('-g, --global', pickMessage(S.installGlobal), false)
+  .option('--collection <id>', pickMessage(S.installCollection))
   .action((target, options) => {
     // Alias --agent to --ide
     if (options.agent) options.ide = options.agent;

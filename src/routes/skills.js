@@ -5,6 +5,7 @@ const SkillModel = require('../models/skill');
 const VersionModel = require('../models/version');
 const FavoriteModel = require('../models/favorite');
 const TagModel = require('../models/tag');
+const CollectionModel = require('../models/collection');
 const { getZipPath, resolveZipPath } = require('../utils/zip');
 const { canManageSkill, canViewSkill } = require('../utils/permission');
 const { parseWebhookUrlField, notifySkillWebhook, canViewSkillWebhook } = require('../utils/skill-webhook');
@@ -35,6 +36,7 @@ function formatSkill(skill, currentUser) {
     favorite_count: skill.favorite_count || 0,
     download_count: skill.download_count || 0,
     tags: TagModel.listSkillTags(skill.id),
+    collections: CollectionModel.listSkillCollections(skill.id),
     owner: {
       id: skill.owner_id,
       username: skill.owner_username,

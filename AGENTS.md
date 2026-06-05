@@ -37,6 +37,9 @@ skill-base/
 - **name**: frontmatter 的 `name`（未写时退化为第一个 `#` 标题）
 - **description**: 标题后的第一段文本
 
+### Collection
+Collection 是管理员维护的扁平推荐包（如“前端组必装”），通过 `collection_skills` 与 Skill 多对多关联；它负责推荐入口，不替代 tags，也不是文件夹树。
+
 ### Version
 版本号格式: `vYYYYMMDD.HHmmss`（时间戳版本）
 

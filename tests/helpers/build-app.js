@@ -37,11 +37,15 @@ async function buildTestApp() {
   clearModule('../../src/routes/skills');
   clearModule('../../src/routes/users');
   clearModule('../../src/routes/tags');
+  clearModule('../../src/routes/collections');
   clearModule('../../src/models/user');
   clearModule('../../src/models/skill');
   clearModule('../../src/models/version');
   clearModule('../../src/models/favorite');
   clearModule('../../src/models/tag');
+  clearModule('../../src/models/collection');
+  clearModule('../../src/utils/collection-bundle');
+  clearModule('../../src/utils/zip');
   clearModule('../../src/utils/model-cache');
   clearModule('../../src/utils/permission');
 
@@ -72,6 +76,14 @@ async function buildTestApp() {
     await app.register(require('../../src/routes/tags'), { prefix: `${apiPrefix}/tags` });
   } catch (error) {
     if (!String(error && error.message ? error.message : error).includes("Cannot find module '../../src/routes/tags'")) {
+      throw error;
+    }
+  }
+
+  try {
+    await app.register(require('../../src/routes/collections'), { prefix: `${apiPrefix}/collections` });
+  } catch (error) {
+    if (!String(error && error.message ? error.message : error).includes("Cannot find module '../../src/routes/collections'")) {
       throw error;
     }
   }

@@ -610,6 +610,103 @@
 
 ---
 
+## 集合模块 `/api/v1/collections`
+
+集合是管理员维护的推荐包，用于“前端组必装”“产品经理常用”这类入口。一个 Skill 可属于多个集合；删除集合只移除关联，不删除 Skill。每个集合最多包含 **10** 个 Skill。
+
+### 1. 集合列表（含 Skill 数）
+
+**GET** `/api/v1/collections`
+
+**认证:** 需要 Session
+
+**响应:**
+```json
+{
+  "collections": [
+    { "id": 1, "name": "前端组必装", "description": "前端新人先装这些", "sort_order": 0, "skill_count": 3 }
+  ]
+}
+```
+
+---
+
+### 2. 集合详情
+
+**GET** `/api/v1/collections/:collection_id`
+
+返回集合元数据与成员 Skill 列表。成员列表会按当前用户权限过滤：普通用户看不到自己无权访问的 private Skill。
+
+---
+
+### 3. 创建集合
+
+**POST** `/api/v1/collections`
+
+**认证:** 需要 Session，且为 **管理员**
+
+**请求体:**
+```json
+{
+  "name": "前端组必装",
+  "description": "前端新人先装这些",
+  "sort_order": 0
+}
+```
+
+---
+
+### 4. 更新集合
+
+**PATCH** `/api/v1/collections/:collection_id`
+
+**认证:** 需要 Session，且为 **管理员**
+
+可更新 `name`、`description`、`sort_order`。
+
+---
+
+### 5. 删除集合
+
+**DELETE** `/api/v1/collections/:collection_id`
+
+**认证:** 需要 Session，且为 **管理员**
+
+删除集合本身与 `collection_skills` 关联，不删除 Skill。
+
+---
+
+### 6. 替换集合成员
+
+**PUT** `/api/v1/collections/:collection_id/skills`
+
+**认证:** 需要 Session，且为 **管理员**
+
+用 Skill ID 列表整体替换集合成员，列表顺序会写入集合内排序。最多 **10** 个 Skill；超出会返回 `400`。
+
+**请求体:**
+```json
+{
+  "skill_ids": ["git-commit-skill", "ppt-skill"]
+}
+```
+
+---
+
+### 7. 下载集合压缩包
+
+**GET** `/api/v1/collections/:collection_id/download`
+
+**认证:** 需要 Session
+
+按当前用户可见性打包集合内全部可下载 Skill（需有 `latest_version` 且版本 zip 存在），返回一个 zip 文件。zip 根目录下每个一级文件夹对应一个 Skill 目录，例如 `git-commit-skill/SKILL.md`，解压后可直接复制到 Agent 的 skills 目录。
+
+**响应:** `application/zip`，`Content-Disposition: attachment; filename="collection-{id}-{slug}.zip"`
+
+若集合内没有可下载 Skill，返回 `404`。
+
+---
+
 ## 数据模型
 
 ### User
@@ -633,6 +730,7 @@
 | `download_count` | number | 版本下载累计次数（仅统计 **download** 接口） |
 | `is_favorited` | boolean | 当前登录用户是否已收藏（未登录为 `false`） |
 | `tags` | array | `{ id, name }[]`，全局标签 |
+| `collections` | array | `{ id, name }[]`，所属集合 |
 | `owner` | object | 所有者信息 `{id, username}` |
 | `visibility` | string | `public` 或 `private` |
 | `created_at` | string | 创建时间 |
