@@ -145,6 +145,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSkillsStore } from '@/stores/skills'
 import { useI18n } from '@/composables/useI18n'
 import { useSkillViewMode } from '@/composables/useSkillViewMode'
+import { useHomeTagFilter } from '@/composables/useHomeTagFilter'
 import SkillListDisplay from '@/components/SkillListDisplay.vue'
 import SkillViewModeToggle from '@/components/SkillViewModeToggle.vue'
 import { type Tag } from '@/services/api'
@@ -152,9 +153,9 @@ import { type Tag } from '@/services/api'
 const skillsStore = useSkillsStore()
 const { t } = useI18n()
 const { viewMode } = useSkillViewMode()
+const { selectedTagIds, pruneToAvailable } = useHomeTagFilter()
 const searchQuery = ref('')
 const onlyFavorites = ref(false)
-const selectedTagIds = ref<number[]>([])
 const showTagDropdown = ref(false)
 const isLoading = ref(true)
 
@@ -262,6 +263,7 @@ function clearSearch() {
 onMounted(async () => {
   document.addEventListener('click', onDocumentClick)
   await skillsStore.fetchSkills()
+  pruneToAvailable(new Set(availableTags.value.map((tag) => tag.id)))
   isLoading.value = false
 })
 

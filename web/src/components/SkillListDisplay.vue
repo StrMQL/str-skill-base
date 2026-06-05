@@ -3,6 +3,7 @@
     <template v-if="isLoading">
       <template v-if="viewMode === 'list'">
         <div v-for="i in skeletonCount" :key="i" class="skeleton-list-row">
+          <div class="skeleton-list-index"></div>
           <div class="skeleton-list-main">
             <div class="skeleton-title"></div>
             <div class="skeleton-desc"></div>
@@ -31,11 +32,12 @@
 
     <template v-else-if="viewMode === 'list'">
       <router-link
-        v-for="skill in skills"
+        v-for="(skill, index) in skills"
         :key="skill.id"
         :to="`/skills/${skill.id}`"
         class="skill-list-row"
       >
+        <span class="skill-list-index">{{ index + 1 }}</span>
         <div class="skill-list-main">
           <div class="skill-list-title-row">
             <h3 class="skill-list-name">{{ skill.name }}</h3>
@@ -213,19 +215,38 @@ function truncateDescription(desc: string | null | undefined, maxLen: number): s
   display: flex;
   flex-direction: column;
   gap: 0;
-  margin-top: 2rem;
+  /* margin-top: 2rem; */
   border-top: 1px solid var(--color-base-800);
+}
+
+.skill-list-index {
+  flex-shrink: 0;
+  align-self: center;
+  width: 2rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-base-500);
+  text-align: left;
 }
 
 .skill-list-row {
   display: flex;
   align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: 0.75rem 0;
   border-bottom: 1px solid var(--color-base-800);
   text-decoration: none;
   transition: color 0.15s ease;
+}
+
+.skill-list-row .skill-list-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.skill-list-row .skill-list-aside {
+  margin-left: auto;
 }
 
 .skill-list-row:last-child {
@@ -234,11 +255,6 @@ function truncateDescription(desc: string | null | undefined, maxLen: number): s
 
 .skill-list-row:hover .skill-list-name {
   color: var(--color-neon-400);
-}
-
-.skill-list-main {
-  flex: 1;
-  min-width: 0;
 }
 
 .skill-list-title-row {
@@ -259,13 +275,6 @@ function truncateDescription(desc: string | null | undefined, maxLen: number): s
   align-items: center;
   gap: 0.4rem;
   transition: color 0.15s ease;
-}
-
-.skill-list-name::before {
-  content: '>';
-  color: var(--color-neon-400);
-  opacity: 0.7;
-  font-weight: 400;
 }
 
 .skill-list-desc {
@@ -325,10 +334,24 @@ function truncateDescription(desc: string | null | undefined, maxLen: number): s
 .skeleton-list-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
+  gap: 0.75rem;
   padding: 0.85rem 0;
   border-bottom: 1px solid var(--color-base-800);
+}
+
+.skeleton-list-index {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 0.75rem;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--color-base-900) 25%,
+    var(--color-base-700) 50%,
+    var(--color-base-900) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s infinite;
 }
 
 .skeleton-list-main {
@@ -352,12 +375,13 @@ function truncateDescription(desc: string | null | undefined, maxLen: number): s
 
 @media (max-width: 639px) {
   .skill-list-row {
-    flex-direction: column;
-    gap: 0.5rem;
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
   }
 
   .skill-list-aside {
     width: 100%;
+    margin-left: calc(2rem + 0.75rem);
     justify-content: flex-start;
   }
 }

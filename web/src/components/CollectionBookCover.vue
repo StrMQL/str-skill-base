@@ -202,7 +202,7 @@ const faceStyle = computed(() => ({
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
-  flex: 1;
+  min-height: 0;
 }
 
 .book-footer {

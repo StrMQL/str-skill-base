@@ -440,7 +440,7 @@ watch(() => route.params.id, loadDetail)
 
 .collection-skills-section {
   padding-top: 0.5rem;
-  border-top: 1px solid var(--color-base-800);
+  /* border-top: 1px solid var(--color-base-800); */
 }
 
 .collection-skills-toolbar {

@@ -17,7 +17,15 @@
 
     <div v-else-if="collections.length === 0" class="collections-empty">
       <Package :size="40" :stroke-width="1.5" aria-hidden="true" />
-      <p>{{ t('collections.empty') }}</p>
+      <p class="collections-empty-title">{{ t('collections.empty') }}</p>
+      <p class="collections-empty-hint">{{ t('collections.emptyHint') }}</p>
+      <router-link
+        v-if="authStore.isAdmin"
+        to="/admin/collections"
+        class="collections-empty-cta"
+      >
+        {{ t('collections.emptyAdminCta') }}
+      </router-link>
     </div>
 
     <div v-else class="collections-shelf" :class="shelfLayoutClass(collections.length)">
@@ -42,9 +50,11 @@ import { ref, onMounted } from 'vue'
 import { Package } from 'lucide-vue-next'
 import CollectionBookCover from '@/components/CollectionBookCover.vue'
 import { useI18n } from '@/composables/useI18n'
+import { useAuthStore } from '@/stores/auth'
 import { collectionsApi, type Collection } from '@/services/api'
 
 const { t } = useI18n()
+const authStore = useAuthStore()
 const collections = ref<Collection[]>([])
 const isLoading = ref(true)
 
@@ -131,6 +141,37 @@ onMounted(async () => {
 .collections-empty svg {
   margin: 0 auto 1rem;
   opacity: 0.35;
+}
+
+.collections-empty-title {
+  margin: 0 0 0.75rem;
+  font-size: 0.9375rem;
+  color: var(--color-fg-strong);
+}
+
+.collections-empty-hint {
+  margin: 0 auto;
+  max-width: 28rem;
+  font-size: 0.8125rem;
+  line-height: 1.6;
+  color: var(--color-base-400);
+}
+
+.collections-empty-cta {
+  display: inline-block;
+  margin-top: 1.5rem;
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  color: var(--color-neon-400);
+  text-decoration: none;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.5rem;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.collections-empty-cta:hover {
+  color: var(--color-fg-strong);
+  border-color: var(--color-neon-400);
 }
 
 </style>
