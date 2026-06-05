@@ -234,6 +234,23 @@ async function start() {
       fastify.decorate('cappy', { action: () => {} });
     }
 
+    const shutdown = async (signal) => {
+      debugLog(
+        { zh: `收到 ${signal}，正在关闭服务...`, en: `Received ${signal}, shutting down...` }
+      );
+      try {
+        if (enableCappy && cappy) {
+          cappy.stop?.();
+        }
+        await fastify.close();
+      } catch {
+        // ignore shutdown errors
+      }
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
+
     await fastify.listen({ port: PORT, host: HOST });
     infoLog({
       zh: `\n📦 Skill Base 引擎已启动： http://${HOST === '0.0.0.0' ? 'localhost' : HOST}:${PORT}${APP_BASE_PATH}\n`,

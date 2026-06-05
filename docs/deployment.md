@@ -25,6 +25,37 @@ data/
 | `--session-store` | - | `memory` or `sqlite` | `memory` |
 | `--no-cappy` | - | Disable terminal Cappy | enabled |
 | `--verbose` | `-v` | Debug logging | off |
+| `--daemon` | - | Run in background (PID/log under data dir; Cappy off by default) | off |
+| `--stop` | - | Stop a `--daemon` process | - |
+| `--status` | - | Check whether the background process is running | - |
+
+Without pm2:
+
+```bash
+npx skill-base -d ./skill-data -p 8000 --daemon
+npx skill-base -d ./skill-data --status
+npx skill-base -d ./skill-data --stop
+```
+
+The data directory gets `skill-base.pid` and `skill-base.log`. Use the same `-d` for `--stop` and `--status` as for `--daemon`.
+
+### Multiple instances
+
+A background process is keyed by **data directory** (resolved absolute path of `-d`), not by port. Each data dir has its own PID and log file:
+
+```bash
+npx skill-base -d ./team-a-data -p 8000 --daemon
+npx skill-base -d ./team-b-data -p 8001 --daemon
+
+npx skill-base -d ./team-a-data --status
+npx skill-base -d ./team-b-data --stop
+```
+
+Notes:
+
+- One running instance per `-d` (one `skills.db`); starting another `--daemon` on the same dir fails even on a different port.
+- Different instances must use different ports or the second bind will fail.
+- Without `-d`, every instance shares the package default `data/` — only one background process is allowed.
 
 ## Environment variables
 

@@ -107,27 +107,35 @@ test('GET /skills/:id/versions/:version/download increments both download counte
   }
 });
 
-test('super admin can manage tags but normal admin cannot', async () => {
+test('admins can manage tags but non-admins cannot', async () => {
   const app = await buildTestApp();
 
   try {
     seedSkillWithVersion(app);
 
-    const ok = await app.inject({
+    const superAdmin = await app.inject({
       method: 'POST',
       url: `${app.apiPrefix}/tags`,
       headers: { cookie: sessionCookie(app, 1) },
       payload: { name: 'frontend' }
     });
 
-    const forbidden = await app.inject({
+    const normalAdmin = await app.inject({
       method: 'POST',
       url: `${app.apiPrefix}/tags`,
       headers: { cookie: sessionCookie(app, 2) },
       payload: { name: 'backend' }
     });
 
-    assert.equal(ok.statusCode, 201);
+    const forbidden = await app.inject({
+      method: 'POST',
+      url: `${app.apiPrefix}/tags`,
+      headers: { cookie: sessionCookie(app, 3) },
+      payload: { name: 'ops' }
+    });
+
+    assert.equal(superAdmin.statusCode, 201);
+    assert.equal(normalAdmin.statusCode, 201);
     assert.equal(forbidden.statusCode, 403);
   } finally {
     await app.cleanup();

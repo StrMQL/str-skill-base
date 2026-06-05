@@ -1,4 +1,5 @@
 const AdmZip = require('adm-zip');
+const { isJunkZipPath } = require('./zip-sanitize');
 const {
   slugRepoNameForSkillId,
   folderBasenameHintForGithubImport,
@@ -200,6 +201,7 @@ function extractSkillFilesFromZipball(buffer, subpathNormalized) {
   for (const entry of entries) {
     if (entry.isDirectory) continue;
     const name = entry.entryName.replace(/\\/g, '/');
+    if (isJunkZipPath(name)) continue;
     if (!name.startsWith(skillPrefix)) continue;
 
     let rel = name.slice(prefixLen);

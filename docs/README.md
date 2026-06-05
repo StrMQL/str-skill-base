@@ -12,6 +12,7 @@ Skill Base user docs. English guides live at the repo root of `docs/`; Chinese g
 | [Architecture](architecture.md) | Data model and stack choices |
 | [Desktop](desktop.md) | Download and features |
 | [Author](author.md) | Maintenance contract, Author's Lab |
+| [Webhook](webhook.md) | Configure, payloads, local demo |
 | [Changelog](../CHANGELOG.md) | Server / npm release notes |
 
 CLI and API references are maintained in Chinese: [CLI](zh/cli.md) · [API](zh/api.md).
@@ -29,6 +30,7 @@ CLI and API references are maintained in Chinese: [CLI](zh/cli.md) · [API](zh/a
 | [作者与维护](zh/author.md) | 维护契约、Author's Lab |
 | [CLI](zh/cli.md) | `skb` 命令参考 |
 | [API](zh/api.md) | HTTP API |
+| [Webhook 指南](zh/webhook.md) | 配置、事件载荷、本地 Demo |
 | [更新日志](../CHANGELOG.md) | 服务端 / npm 版本说明 |
 
 Project README: [English](../README.md) · [中文](zh/README.md)

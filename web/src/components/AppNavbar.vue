@@ -66,7 +66,7 @@
                   用户管理
                 </router-link>
                 <router-link
-                  v-if="authStore.isSuperAdmin"
+                  v-if="authStore.isAdmin"
                   to="/admin/tags"
                   class="block px-4 py-2 text-sm text-base-200 hover:text-fg-strong hover:bg-white/5"
                   @click="showUserMenu = false"

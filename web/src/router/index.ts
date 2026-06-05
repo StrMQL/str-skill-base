@@ -73,7 +73,7 @@ const router = createRouter({
       path: '/admin/tags',
       name: 'tag-management',
       component: TagManagementView,
-      meta: { requiresAuth: true, requiresSuperAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })

@@ -66,7 +66,7 @@
                 <Users :size="16" :stroke-width="2" aria-hidden="true" />
                 {{ t('nav.admin') }}
               </router-link>
-              <router-link v-if="authStore.isSuperAdmin" to="/admin/tags" class="navbar-user-menu-item" @click="showUserMenu = false">
+              <router-link v-if="authStore.isAdmin" to="/admin/tags" class="navbar-user-menu-item" @click="showUserMenu = false">
                 <Tags :size="16" :stroke-width="2" aria-hidden="true" />
                 {{ t('nav.tagAdmin') }}
               </router-link>

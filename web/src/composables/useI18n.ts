@@ -92,6 +92,9 @@ const zh: Record<string, string> = {
   'index.tagsFilter': '标签',
   'index.tagsFilterHint': '可多选',
   'index.clearTags': '清除标签',
+  'index.viewCard': '卡片',
+  'index.viewList': '列表',
+  'index.viewMode': '视图模式',
   'index.noFilterMatch': '没有符合当前筛选条件的 Skill',
 
   // Skill detail page
@@ -138,7 +141,7 @@ const zh: Record<string, string> = {
   'skill.favoriteCount': '收藏',
   'skill.downloadCount': '下载',
   'skill.editTags': '编辑标签',
-  'skill.noTags': '暂无可用标签，请联系超级管理员添加标签',
+  'skill.noTags': '暂无可用标签，请联系管理员添加标签',
   'skill.tagsLoadFailed': '加载标签失败',
   'skill.tagsSaveSuccess': '标签已保存',
   'skill.tagsSaveFailed': '保存标签失败',
@@ -598,6 +601,9 @@ const en: Record<string, string> = {
   'index.tagsFilter': 'Tags',
   'index.tagsFilterHint': 'Multi-select',
   'index.clearTags': 'Clear tags',
+  'index.viewCard': 'Cards',
+  'index.viewList': 'List',
+  'index.viewMode': 'View mode',
   'index.noFilterMatch': 'No skills match the current filters',
 
   // Skill detail page
@@ -644,7 +650,7 @@ const en: Record<string, string> = {
   'skill.favoriteCount': 'favorites',
   'skill.downloadCount': 'downloads',
   'skill.editTags': 'Edit Tags',
-  'skill.noTags': 'No tags available, contact a super admin to add tags.',
+  'skill.noTags': 'No tags available, contact an admin to add tags.',
   'skill.tagsLoadFailed': 'Failed to load tags',
   'skill.tagsSaveSuccess': 'Tags saved',
   'skill.tagsSaveFailed': 'Failed to save tags',

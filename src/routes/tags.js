@@ -1,17 +1,6 @@
 const TagModel = require('../models/tag');
-const { isSuperAdmin } = require('../utils/permission');
 
 async function tagsRoutes(fastify) {
-  async function requireSuperAdmin(request, reply) {
-    if (!isSuperAdmin(request.user)) {
-      return reply.code(403).send({
-        ok: false,
-        error: 'forbidden',
-        detail: 'Super admin permission required'
-      });
-    }
-  }
-
   fastify.get('/', {
     preHandler: [fastify.authenticate]
   }, async () => {
@@ -19,7 +8,7 @@ async function tagsRoutes(fastify) {
   });
 
   fastify.post('/', {
-    preHandler: [fastify.authenticate, requireSuperAdmin]
+    preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
     const name = String(request.body?.name || '').trim();
     if (!name) {
@@ -31,7 +20,7 @@ async function tagsRoutes(fastify) {
   });
 
   fastify.patch('/:tag_id', {
-    preHandler: [fastify.authenticate, requireSuperAdmin]
+    preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
     const tagId = parseInt(request.params.tag_id, 10);
     const name = String(request.body?.name || '').trim();
@@ -50,7 +39,7 @@ async function tagsRoutes(fastify) {
   });
 
   fastify.delete('/:tag_id', {
-    preHandler: [fastify.authenticate, requireSuperAdmin]
+    preHandler: [fastify.requireAdmin]
   }, async (request, reply) => {
     const tagId = parseInt(request.params.tag_id, 10);
     if (!Number.isInteger(tagId) || tagId <= 0) {

@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const AdmZip = require('adm-zip');
 
 function clearModule(modulePath) {
   try {
@@ -24,6 +25,7 @@ function loadFreshPublish(dbPath, dataDir) {
   clearModule('../src/utils/permission');
   clearModule('../src/utils/skill-webhook');
   clearModule('../src/utils/zip');
+  clearModule('../src/utils/zip-sanitize');
   clearModule('../src/utils/publish-skill');
 
   const db = require('../src/database');
@@ -125,6 +127,37 @@ test('publish rejects same-second duplicate without overwriting existing zip', (
 
     const versionCount = db.prepare('SELECT COUNT(*) AS count FROM skill_versions WHERE skill_id = ?').get('skill-a');
     assert.equal(versionCount.count, 1);
+  } finally {
+    destroyFixture(tempDir);
+  }
+});
+
+test('publish strips __MACOSX from stored zip', () => {
+  const { tempDir, dbPath, dataDir } = createFixture();
+
+  try {
+    const { db, publishSkillFromZip } = loadFreshPublish(dbPath, dataDir);
+    const userId = seedUser(db);
+    const user = { id: userId, role: 'developer', username: 'alice' };
+
+    const z = new AdmZip();
+    z.addFile('mac-skill/SKILL.md', Buffer.from('# Mac Skill\n\nok'));
+    z.addFile('__MACOSX/mac-skill/._SKILL.md', Buffer.from('junk'));
+
+    const result = publishSkillFromZip({
+      user,
+      skillId: 'mac-skill',
+      name: 'Mac Skill',
+      description: 'test',
+      changelog: 'v1',
+      zipBuffer: z.toBuffer()
+    });
+
+    assert.equal(result.ok, true);
+
+    const zipPath = path.join(dataDir, 'skills', 'mac-skill', `${result.version}.zip`);
+    const names = new AdmZip(fs.readFileSync(zipPath)).getEntries().map((e) => e.entryName.replace(/\\/g, '/'));
+    assert.deepEqual(names, ['mac-skill/SKILL.md']);
   } finally {
     destroyFixture(tempDir);
   }
