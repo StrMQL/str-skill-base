@@ -6,6 +6,11 @@ import prompts from 'prompts';
 import { detectInsideIdeDir, resolveInstallDir, getIdeChoices, getSupportedIdeIds, IDE_CONFIGS } from '../ide.js';
 import { rememberSkillInstall } from '../installs.js';
 import { downloadAndExtract } from '../download-and-extract.mjs';
+import {
+  downloadCollectionZip,
+  extractCollectionZip,
+  fetchCollectionDetail
+} from '../download-collection.mjs';
 import { pickMessage, lang } from '../i18n.js';
 
 export { downloadAndExtract };
@@ -27,8 +32,19 @@ const M = {
       `Current directory is already inside ${name}'s skill path; continuing may nest installs. Continue?`
   },
   downloading: { zh: '正在下载 ', en: 'Downloading ' },
+  downloadingCollection: { zh: '正在下载集合 ', en: 'Downloading collection ' },
   installed: { zh: '已安装 ', en: 'Installed ' },
+  installedCollection: {
+    zh: (count) => `已安装集合内 ${count} 个 Skill`,
+    en: (count) => `Installed ${count} skill(s) from collection`
+  },
   notFound: { zh: '未找到 Skill', en: 'Skill not found' },
+  collectionNotFound: { zh: '未找到集合', en: 'Collection not found' },
+  collectionEmpty: { zh: '集合内没有可安装的 Skill', en: 'No installable skills in this collection' },
+  collectionTargetRequired: {
+    zh: '请指定 Skill 名称，或使用 --collection <id> 安装集合',
+    en: 'Specify a skill name, or use --collection <id> to install a collection'
+  },
   possible: { zh: '可尝试:', en: 'Possible solutions:' },
   sol1: { zh: '  1. 检查 Skill 名称是否正确', en: '  1. Check the skill name' },
   sol2: { zh: '  2. 使用 `skb search <关键词>` 查找可用 Skill', en: '  2. Use `skb search <keyword>` to find skills' },
@@ -39,6 +55,10 @@ const M = {
   overwriteAsk: {
     zh: (p) => `目标已存在同名目录，是否覆盖？\n${p}`,
     en: (p) => `A folder with the same skill name already exists. Overwrite?\n${p}`
+  },
+  overwriteAllAsk: {
+    zh: (paths) => `以下 ${paths.length} 个 Skill 目录已存在，是否全部覆盖？\n${paths.join('\n')}`,
+    en: (paths) => `${paths.length} skill folder(s) already exist. Overwrite all?\n${paths.join('\n')}`
   }
 };
 
@@ -47,7 +67,108 @@ function pickFn(obj, arg) {
   return typeof fn === 'function' ? fn(arg) : '';
 }
 
-export default async function install(target, options) {
+async function resolveInstallTarget(options, skillIdForIde = '') {
+  let targetDir;
+  let selectedIdeId = null;
+
+  if (options.dir) {
+    targetDir = options.dir;
+    return { targetDir, selectedIdeId };
+  }
+
+  let ideId = options.ide;
+
+  if (!ideId) {
+    const ideChoices = [
+      ...getIdeChoices(),
+      { title: pickMessage(M.cwdChoice), value: '_cwd' }
+    ];
+    const response = await prompts({
+      type: 'select',
+      name: 'ide',
+      message: pickMessage(M.chooseIde),
+      choices: ideChoices
+    });
+
+    if (response.ide === undefined) {
+      console.log(chalk.yellow(pickMessage(M.cancelled)));
+      process.exit(0);
+    }
+
+    ideId = response.ide;
+  }
+
+  selectedIdeId = ideId === '_cwd' ? '' : ideId;
+
+  if (ideId === '_cwd') {
+    targetDir = process.cwd();
+  } else {
+    if (!getSupportedIdeIds().includes(ideId)) {
+      console.log(chalk.red(`${pickMessage(M.unsupportedIde)}${ideId}`));
+      console.log(chalk.yellow(`${pickMessage(M.supportedPrefix)}${getSupportedIdeIds().join(', ')}`));
+      process.exit(1);
+    }
+
+    if (options.global && !IDE_CONFIGS[ideId].supportsGlobal) {
+      console.log(chalk.red(`${IDE_CONFIGS[ideId].name}${pickMessage(M.noGlobal)}`));
+      process.exit(1);
+    }
+
+    const insideIde = detectInsideIdeDir(process.cwd());
+    if (insideIde) {
+      const { confirm } = await prompts({
+        type: 'confirm',
+        name: 'confirm',
+        message: pickFn(M.nestedWarn, insideIde.name),
+        initial: false
+      });
+      if (!confirm) {
+        console.log(chalk.yellow(pickMessage(M.cancelled)));
+        process.exit(0);
+      }
+    }
+
+    targetDir = resolveInstallDir(ideId, skillIdForIde, options.global || false, process.cwd());
+  }
+
+  return { targetDir, selectedIdeId };
+}
+
+async function confirmOverwriteSingle(installPathCandidate) {
+  const displayConflict = path.relative(process.cwd(), installPathCandidate) || installPathCandidate;
+  const { confirm: overwrite } = await prompts({
+    type: 'confirm',
+    name: 'confirm',
+    message: pickFn(M.overwriteAsk, displayConflict),
+    initial: false
+  });
+  if (overwrite === undefined || !overwrite) {
+    console.log(chalk.yellow(pickMessage(M.cancelled)));
+    process.exit(0);
+  }
+  fs.rmSync(installPathCandidate, { recursive: true, force: true });
+}
+
+async function confirmOverwriteAll(conflictPaths) {
+  const displayPaths = conflictPaths.map(
+    (p) => path.relative(process.cwd(), p) || p
+  );
+  const { confirm: overwrite } = await prompts({
+    type: 'confirm',
+    name: 'confirm',
+    message: pickFn(M.overwriteAllAsk, displayPaths),
+    initial: false
+  });
+  if (overwrite === undefined || !overwrite) {
+    console.log(chalk.yellow(pickMessage(M.cancelled)));
+    process.exit(0);
+  }
+  for (const conflictPath of conflictPaths) {
+    fs.rmSync(conflictPath, { recursive: true, force: true });
+  }
+}
+
+async function installSingleSkill(target, options) {
   let skillId;
   let version;
   if (target.includes('@')) {
@@ -59,93 +180,19 @@ export default async function install(target, options) {
     version = 'latest';
   }
 
-  let targetDir;
-  let selectedIdeId = null;
+  const { targetDir, selectedIdeId } = await resolveInstallTarget(options, skillId);
+  const resolvedTargetDir = path.resolve(targetDir);
+  const installPathCandidate = path.join(resolvedTargetDir, skillId);
 
-  if (options.dir) {
-    targetDir = options.dir;
-  } else {
-    let ideId = options.ide;
-
-    if (!ideId) {
-      const ideChoices = [
-        ...getIdeChoices(),
-        { title: pickMessage(M.cwdChoice), value: '_cwd' }
-      ];
-      const response = await prompts({
-        type: 'select',
-        name: 'ide',
-        message: pickMessage(M.chooseIde),
-        choices: ideChoices
-      });
-
-      if (response.ide === undefined) {
-        console.log(chalk.yellow(pickMessage(M.cancelled)));
-        process.exit(0);
-      }
-
-      ideId = response.ide;
-    }
-
-    selectedIdeId = ideId === '_cwd' ? '' : ideId;
-
-    if (ideId === '_cwd') {
-      targetDir = process.cwd();
-    } else {
-      if (!getSupportedIdeIds().includes(ideId)) {
-        console.log(chalk.red(`${pickMessage(M.unsupportedIde)}${ideId}`));
-        console.log(chalk.yellow(`${pickMessage(M.supportedPrefix)}${getSupportedIdeIds().join(', ')}`));
-        process.exit(1);
-      }
-
-      if (options.global && !IDE_CONFIGS[ideId].supportsGlobal) {
-        console.log(chalk.red(`${IDE_CONFIGS[ideId].name}${pickMessage(M.noGlobal)}`));
-        process.exit(1);
-      }
-
-      const insideIde = detectInsideIdeDir(process.cwd());
-      if (insideIde) {
-        const { confirm } = await prompts({
-          type: 'confirm',
-          name: 'confirm',
-          message: pickFn(M.nestedWarn, insideIde.name),
-          initial: false
-        });
-        if (!confirm) {
-          console.log(chalk.yellow(pickMessage(M.cancelled)));
-          process.exit(0);
-        }
-      }
-
-      targetDir = resolveInstallDir(ideId, skillId, options.global || false, process.cwd());
-    }
-  }
-
-  const installPathCandidate = path.join(path.resolve(targetDir), skillId);
   if (fs.existsSync(installPathCandidate)) {
-    const displayConflict = path.relative(process.cwd(), installPathCandidate) || installPathCandidate;
-    const { confirm: overwrite } = await prompts({
-      type: 'confirm',
-      name: 'confirm',
-      message: pickFn(M.overwriteAsk, displayConflict),
-      initial: false
-    });
-    if (overwrite === undefined) {
-      console.log(chalk.yellow(pickMessage(M.cancelled)));
-      process.exit(0);
-    }
-    if (!overwrite) {
-      console.log(chalk.yellow(pickMessage(M.cancelled)));
-      process.exit(0);
-    }
-    fs.rmSync(installPathCandidate, { recursive: true, force: true });
+    await confirmOverwriteSingle(installPathCandidate);
   }
 
   const verLabel = version !== 'latest' ? `@${version}` : '';
   const spinner = ora(`${pickMessage(M.downloading)}${skillId}${verLabel}...`).start();
 
   try {
-    const result = await downloadAndExtract(skillId, version, targetDir);
+    const result = await downloadAndExtract(skillId, version, resolvedTargetDir);
     const installPath = path.join(result.targetDir, skillId);
     rememberSkillInstall({
       skillId: result.skillId,
@@ -184,4 +231,86 @@ export default async function install(target, options) {
     }
     process.exit(1);
   }
+}
+
+async function installCollection(collectionRefRaw, options) {
+  const collectionRef = String(collectionRefRaw || '').trim();
+  if (!collectionRef) {
+    console.log(chalk.red(pickMessage({ zh: '无效的集合 ID 或 slug', en: 'Invalid collection id or slug' })));
+    process.exit(1);
+  }
+
+  let detail;
+  try {
+    detail = await fetchCollectionDetail(collectionRef);
+  } catch (err) {
+    if (String(err.message).includes('HTTP 404')) {
+      console.log(chalk.red(`${pickMessage(M.collectionNotFound)} ${collectionRef}`));
+      process.exit(1);
+    }
+    console.log(chalk.red(`${pickMessage(M.installFailed)}${err.message}`));
+    process.exit(1);
+  }
+
+  const skills = (detail.skills || []).filter((skill) => skill.latest_version);
+  if (skills.length === 0) {
+    console.log(chalk.yellow(pickMessage(M.collectionEmpty)));
+    process.exit(1);
+  }
+
+  const { targetDir, selectedIdeId } = await resolveInstallTarget(options);
+  const resolvedTargetDir = path.resolve(targetDir);
+
+  const conflictPaths = skills
+    .map((skill) => path.join(resolvedTargetDir, skill.id))
+    .filter((installPath) => fs.existsSync(installPath));
+
+  if (conflictPaths.length > 0) {
+    await confirmOverwriteAll(conflictPaths);
+  }
+
+  const spinner = ora(`${pickMessage(M.downloadingCollection)}${collectionRef}...`).start();
+
+  try {
+    const buffer = await downloadCollectionZip(collectionRef);
+    await extractCollectionZip(buffer, resolvedTargetDir);
+
+    for (const skill of skills) {
+      const installPath = path.join(resolvedTargetDir, skill.id);
+      if (!fs.existsSync(installPath)) {
+        continue;
+      }
+      rememberSkillInstall({
+        skillId: skill.id,
+        installPath,
+        version: skill.latest_version,
+        ide: selectedIdeId,
+        isGlobal: options.global || false
+      });
+    }
+
+    spinner.succeed(chalk.green(pickFn(M.installedCollection, skills.length)));
+    for (const skill of skills) {
+      const installPath = path.join(resolvedTargetDir, skill.id);
+      if (!fs.existsSync(installPath)) continue;
+      const displayPath = path.relative(process.cwd(), installPath) || installPath;
+      console.log(chalk.gray(`  ${skill.id} ${skill.latest_version} → ${displayPath}`));
+    }
+  } catch (err) {
+    spinner.fail(chalk.red(`${pickMessage(M.installFailed)}${err.message}`));
+    process.exit(1);
+  }
+}
+
+export default async function install(target, options) {
+  if (options.collection) {
+    return installCollection(options.collection, options);
+  }
+
+  if (!target) {
+    console.log(chalk.red(pickMessage(M.collectionTargetRequired)));
+    process.exit(1);
+  }
+
+  return installSingleSkill(target, options);
 }

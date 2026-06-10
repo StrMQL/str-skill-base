@@ -4,6 +4,7 @@ const SkillModel = require('../models/skill');
 const VersionModel = require('../models/version');
 const { invalidateSkill } = require('./model-cache');
 const { ensureSkillDir, generateVersionNumber, getZipPath, getZipRelativePath } = require('./zip');
+const { sanitizeZipBuffer } = require('./zip-sanitize');
 const { canPublishSkill } = require('./permission');
 const { notifySkillWebhook } = require('./skill-webhook');
 
@@ -56,8 +57,9 @@ function publishSkillFromZip({ user, skillId, name, description, changelog, visi
   const version = generateVersionNumber();
   ensureSkillDir(skill_id);
   const zipPath = getZipPath(skill_id, version);
+  const cleanZipBuffer = sanitizeZipBuffer(zipBuffer);
   try {
-    fs.writeFileSync(zipPath, zipBuffer, { flag: 'wx' });
+    fs.writeFileSync(zipPath, cleanZipBuffer, { flag: 'wx' });
   } catch (error) {
     if (error && error.code === 'EEXIST') {
       return {

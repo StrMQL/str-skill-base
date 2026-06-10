@@ -78,7 +78,7 @@ SKB_NODE_TARGET=darwin-arm64 pnpm prepare:resources   # darwin-arm64 | darwin-x6
 
 ## 验收
 
-完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（21 IPC channel、手动 UI 场景）。
+完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（25 IPC channel、手动 UI 场景）。
 
 发布前建议：
 
@@ -106,6 +106,7 @@ cd src-tauri && cargo check
 | 日志出现 `invalid bridge response ... Content Filter - Access Denied` | 本机 bridge IPC 被系统代理/内容过滤器劫持。Rust 调用 `127.0.0.1` bridge 时必须禁用代理；更新到包含该修复的版本后再验证 |
 | IPC 调用无响应 | DevTools 看 `skb_invoke` 错误；确认 bridge 子进程已输出 `BRIDGE_READY` |
 | 对话框/打开浏览器无效 | 5 个原生 channel 由 Rust 处理，见 [IPC.md](./IPC.md) |
+| 安装到 `Universal (.agents)` 报 `EACCES: permission denied` | `Universal (.agents)` 的全局目录是 `~/.config/agents/skills`。先检查 `~/.config` / `~/.config/agents` 是否属于当前用户并可写（例如 `ls -ld ~/.config ~/.config/agents`）；修复权限后重试，或在桌面端改用“自定义目录”选择一个已授权的目标目录 |
 | 搜索/安装失败 | 检查 `config:get.baseUrl` 与 Skill Base 服务是否可达 |
 
 ## 许可与待办

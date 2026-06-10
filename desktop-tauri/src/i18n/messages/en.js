@@ -2,11 +2,13 @@ export default {
   nav: {
     installed: 'Local Assets',
     market: 'Skill Market',
+    collections: 'Collections',
     settings: 'Settings'
   },
   tabs: {
     installed: 'Local Assets',
-    market: 'Skill Market'
+    market: 'Skill Market',
+    collections: 'Collections'
   },
   theme: {
     light: 'Light',
@@ -23,8 +25,14 @@ export default {
   search: {
     installed: 'Search local skills...',
     market: 'Search by name or description...',
+    collections: 'Search collections by name or slug...',
     clear: 'Clear search',
     agentFilter: 'Filter agents (name or path)...'
+  },
+  view: {
+    mode: 'View mode',
+    card: 'Card view',
+    list: 'List view'
   },
   market: {
     favoritesOnly: 'Favorites only',
@@ -52,11 +60,26 @@ export default {
     empty: 'No local installs yet. Install from the Skill Market.',
     syncAll: 'Sync all updates ({count})',
     selectUpdateDirs: 'Choose directories to update',
+    delete: 'Delete local install',
     update: 'Update',
     upToDate: 'Up to date',
     viewAll: '+{count} view all',
     notMounted: 'Not mounted',
     revealHint: 'Reveal in Finder / file manager'
+  },
+  collections: {
+    title: 'Collections',
+    subtitle: 'Curated packs maintained by admins. Install a group of skills at once.',
+    refresh: 'Refresh collections',
+    loading: 'Loading...',
+    empty: 'No collections yet.',
+    emptyFiltered: 'No matching collections. Adjust your search.',
+    noDesc: 'No description',
+    back: 'Back to collections',
+    openOnline: 'View online',
+    install: 'Install collection',
+    skillCount: '{count} skills',
+    emptySkills: 'No visible skills in this collection'
   },
   version: {
     latest: ' (latest)',
@@ -69,6 +92,8 @@ export default {
   },
   install: {
     title: 'Install / {name}',
+    collectionTitle: 'Install collection / {name}',
+    collectionSummary: 'This will install {count} available skills from the collection',
     version: 'Version',
     targets: 'Install targets',
     global: 'Global agents',
@@ -90,6 +115,8 @@ export default {
     addDir: 'Add folder…',
     addDirEmpty: 'Click “Add folder” to choose a destination',
     dirExists: 'Directory exists',
+    dirNotWritable: 'Not writable',
+    dirNotWritableDetail: 'This install directory is not writable. Fix permissions or use a custom folder.',
     overwrite: 'Overwrite existing folder with the same name',
     nestedConfirm: 'Confirm nested install inside agent skill directory',
     cancel: 'Cancel',
@@ -106,6 +133,16 @@ export default {
     pickDirs: 'Directories to update',
     cancel: 'Cancel',
     confirm: 'Update'
+  },
+  delete: {
+    title: 'Delete / {skillId}',
+    warning:
+      'This deletes the selected local Skill directories and removes their install records. This cannot be undone.',
+    selected: '{count} selected',
+    selectAll: 'Select all directories',
+    clearAll: 'Clear selection',
+    cancel: 'Cancel',
+    confirm: 'Delete'
   },
   settings: {
     title: 'Settings',
@@ -158,9 +195,13 @@ export default {
     configureServerFirst: 'Configure the server URL in Settings first',
     installFailed: 'Install failed: {message}',
     installedTo: 'Installed {skillId} to {count} location(s)',
+    collectionInstalled: 'Installed collection {name}: {count} skill folders',
     updateFailed: 'Update failed: {message}',
     updated: 'Updated {skillId}',
     updatedTo: 'Updated {skillId} → v{version}',
+    deleteFailed: 'Delete failed: {message}',
+    deleted: 'Deleted {count} director(ies)',
+    deletedWithSkipped: 'Deleted {count} director(ies), skipped {skipped}',
     versionsLoadFailed: 'Failed to load versions: {message}'
   }
 };

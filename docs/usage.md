@@ -62,7 +62,7 @@ The web UI supports:
 6. Set visibility (`public` / `private`) at create time; owners can change it later
 7. Hide private Skills from non-collaborators on list, detail, versions, and download
 
-**Tags and favorites:** Super admins manage a global tag library under **Tag management** (`/admin/tags`). The home page **Tags** filter uses OR semantics. Owners and collaborators assign tags on the skill detail page. Inline previews use `/view` so browsing a ZIP does not inflate download counts.
+**Tags and favorites:** Admins manage a global tag library under **Tag management** (`/admin/tags`). The home page **Tags** filter uses OR semantics. Owners and collaborators assign tags on the skill detail page. Inline previews use `/view` so browsing a ZIP does not inflate download counts.
 
 ## Desktop
 

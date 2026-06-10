@@ -8,6 +8,7 @@ import * as apiMod from './api.js';
 import * as ideMod from './ide.js';
 import * as installsMod from './installs.js';
 import * as extractMod from './download-and-extract.mjs';
+import * as collectionMod from './download-collection.mjs';
 import * as updateHelpersMod from './update-helpers.mjs';
 
 export function loadDesktopCliStatic() {
@@ -18,6 +19,9 @@ export function loadDesktopCliStatic() {
     ...ideMod,
     ...installsMod,
     downloadAndExtract: extractMod.downloadAndExtract,
+    downloadCollectionZip: collectionMod.downloadCollectionZip,
+    extractCollectionZip: collectionMod.extractCollectionZip,
+    fetchCollectionDetail: collectionMod.fetchCollectionDetail,
     ...updateHelpersMod
   };
 }

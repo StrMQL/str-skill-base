@@ -10,6 +10,9 @@ import SetupView from '@/views/SetupView.vue'
 import DiffView from '@/views/DiffView.vue'
 import UserManagementView from '@/views/UserManagementView.vue'
 import TagManagementView from '@/views/TagManagementView.vue'
+import CollectionManagementView from '@/views/CollectionManagementView.vue'
+import CollectionsListView from '@/views/CollectionsListView.vue'
+import CollectionDetailView from '@/views/CollectionDetailView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { appBasePath } from '@/utils/basePath'
 
@@ -20,6 +23,16 @@ const router = createRouter({
       path: '/',
       name: '',
       component: HomeView,
+    },
+    {
+      path: '/collections',
+      name: 'collections',
+      component: CollectionsListView,
+    },
+    {
+      path: '/collections/:id',
+      name: 'collection-detail',
+      component: CollectionDetailView,
     },
     // {
     //   path: '/landing',
@@ -73,7 +86,13 @@ const router = createRouter({
       path: '/admin/tags',
       name: 'tag-management',
       component: TagManagementView,
-      meta: { requiresAuth: true, requiresSuperAdmin: true },
+      meta: { requiresAuth: true, requiresAdmin: true },
+    },
+    {
+      path: '/admin/collections',
+      name: 'collection-management',
+      component: CollectionManagementView,
+      meta: { requiresAuth: true, requiresAdmin: true },
     },
   ],
 })

@@ -26,9 +26,9 @@ End users do not need Node.js installed.
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-local.png" alt="Skill Base desktop — Local Assets" width="720" />
 </p>
 
-**Local Assets** — One view of every on-disk copy of a skill across agent directories, with up-to-date / update-available status.
+**Local Assets** — One view of every on-disk copy of a skill across agent directories, newest install/update first, with up-to-date / update-available status. Quick Update / Sync all updates every recorded directory for that skill; use the directory picker to update only selected directories.
 
-**Install** — Choose global agents, project agents, or custom folders; optionally overwrite an existing folder with the same name.
+**Install** — Choose global agents, project agents, or custom folders; optionally overwrite an existing folder with the same name. The desktop app marks unwritable targets before install; for example, the global `Universal (.agents)` target maps to `~/.config/agents/skills`, so fix ownership/permissions there or use a custom folder if macOS blocks that path.
 
 <p align="center">
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base desktop — Install to agents" width="720" />

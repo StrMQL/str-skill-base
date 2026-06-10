@@ -208,7 +208,7 @@ skb list
 skb ls
 ```
 
-This command groups local records by Skill and lets you:
+This command groups local records by Skill, newest install/update first, and lets you:
 
 - See install directories recorded for a Skill
 - Start an update flow

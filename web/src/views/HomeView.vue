@@ -16,7 +16,7 @@
         <input
           type="search"
           id="searchInput"
-          :placeholder="`&quot;${t('index.searchPlaceholder')}&quot;`"
+          :placeholder="`&quot;${searchPlaceholder}&quot;`"
           autocomplete="off"
           v-model="searchQuery"
         >
@@ -44,6 +44,8 @@
           <Heart :size="14" :stroke-width="2" aria-hidden="true" />
           {{ t('index.favoriteOnly') }}
         </button>
+
+        <SkillViewModeToggle v-model="viewMode" />
 
         <div
           v-if="!isLoading && availableTags.length > 0"
@@ -98,6 +100,7 @@
                   <Check v-if="isTagSelected(tag.id)" :size="14" :stroke-width="2.5" />
                 </span>
                 <span class="tag-filter-option-label">{{ tag.name }}</span>
+                <span class="tag-filter-option-count">{{ tagSkillCounts.get(tag.id) ?? 0 }}</span>
               </button>
             </div>
           </div>
@@ -106,23 +109,18 @@
     </div>
 
     <!-- Skill 列表 -->
-    <div id="skill-list" class="skill-grid pb-16">
-      <!-- 加载状态 -->
-      <template v-if="isLoading">
-        <div v-for="i in 6" :key="i" class="skeleton-card">
-          <div class="skeleton-title"></div>
-          <div class="skeleton-desc"></div>
-          <div class="skeleton-desc-short"></div>
-          <div class="skeleton-footer"></div>
-        </div>
-      </template>
-
-      <!-- 空状态 -->
-      <template v-else-if="!filteredSkills || filteredSkills.length === 0">
-        <div class="empty-state" style="grid-column: 1 / -1;">
+    <div id="skill-list" class="pb-16">
+      <SkillListDisplay
+        :skills="filteredSkills"
+        :view-mode="viewMode"
+        :is-loading="isLoading"
+        :empty-text="emptyListText"
+        :skeleton-count="viewMode === 'list' ? 8 : 6"
+      >
+        <template #empty>
           <div class="empty-state-icon">📦</div>
           <p v-if="searchQuery" class="empty-state-text">{{ t('index.noResults', { q: searchQuery }) }}</p>
-          <p v-else-if="skillsStore.skills.length > 0" class="empty-state-text">{{ t('index.noFilterMatch') }}</p>
+          <p v-else-if="skillsStore.skills.length > 0" class="empty-state-text">{{ activeFilterEmptyText }}</p>
           <template v-else>
             <p class="empty-state-text">{{ t('index.noSkills') }}</p>
             <router-link to="/publish" class="btn btn-primary mt-6">
@@ -130,48 +128,8 @@
               {{ t('index.publishBtn') }}
             </router-link>
           </template>
-        </div>
-      </template>
-
-      <!-- Skill 卡片 -->
-      <template v-else>
-        <router-link
-          v-for="skill in filteredSkills"
-          :key="skill.id"
-          :to="`/skills/${skill.id}`"
-          class="skill-card"
-        >
-          <div class="skill-card-header">
-            <h3 class="skill-card-name">{{ skill.name }}</h3>
-            <span v-if="skill.visibility === 'private'" class="skill-visibility-badge">PRIVATE</span>
-          </div>
-          <p class="skill-card-desc">{{ truncateDescription(skill.description) }}</p>
-          <div class="skill-card-footer">
-            <div class="skill-card-meta">
-              <span class="skill-card-owner">
-                <User :size="14" :stroke-width="2" aria-hidden="true" />
-                {{ skill.owner?.name || skill.owner?.username || t('state.unknown') }}
-              </span>
-              <span class="skill-card-stats">
-                <span class="skill-card-stat" :title="t('index.downloadCount')">
-                  <Download :size="14" :stroke-width="2" aria-hidden="true" />
-                  {{ skill.download_count ?? 0 }}
-                </span>
-                <span
-                  class="skill-card-stat"
-                  :title="skill.is_favorited ? t('index.favorited') : t('index.favorite')"
-                >
-                  <span :class="{ 'skill-card-stat--favorited': skill.is_favorited }">
-                    <Heart :size="14" :stroke-width="2" aria-hidden="true" />
-                  </span>
-                  {{ skill.favorite_count ?? 0 }}
-                </span>
-              </span>
-            </div>
-            <span>{{ formatDate(skill.updated_at, currentLang) }}</span>
-          </div>
-        </router-link>
-      </template>
+        </template>
+      </SkillListDisplay>
     </div>
   </main>
 
@@ -182,18 +140,22 @@
 </template>
 
 <script setup lang="ts">
-import { X, Heart, Plus, User, Download, Tags, ChevronDown, Check } from 'lucide-vue-next'
+import { X, Heart, Plus, Tags, ChevronDown, Check } from 'lucide-vue-next'
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useSkillsStore } from '@/stores/skills'
 import { useI18n } from '@/composables/useI18n'
-import { formatDate } from '@/utils/date'
-import type { Tag } from '@/services/api'
+import { useSkillViewMode } from '@/composables/useSkillViewMode'
+import { useHomeTagFilter } from '@/composables/useHomeTagFilter'
+import SkillListDisplay from '@/components/SkillListDisplay.vue'
+import SkillViewModeToggle from '@/components/SkillViewModeToggle.vue'
+import { type Tag } from '@/services/api'
 
 const skillsStore = useSkillsStore()
-const { t, currentLang } = useI18n()
+const { t } = useI18n()
+const { viewMode } = useSkillViewMode()
+const { selectedTagIds, pruneToAvailable } = useHomeTagFilter()
 const searchQuery = ref('')
 const onlyFavorites = ref(false)
-const selectedTagIds = ref<number[]>([])
 const showTagDropdown = ref(false)
 const isLoading = ref(true)
 
@@ -208,6 +170,33 @@ const availableTags = computed(() => {
     }
   }
   return [...map.values()].sort((a, b) => a.name.localeCompare(b.name))
+})
+
+/** 各标签在当前可见 Skill 列表中的出现次数 */
+const tagSkillCounts = computed(() => {
+  const counts = new Map<number, number>()
+  for (const skill of skillsStore.skills) {
+    for (const tag of skill.tags || []) {
+      counts.set(tag.id, (counts.get(tag.id) ?? 0) + 1)
+    }
+  }
+  return counts
+})
+
+const searchPlaceholder = computed(() =>
+  t('index.searchPlaceholder', { count: skillsStore.skills.length })
+)
+
+const activeFilterEmptyText = computed(() => {
+  if (selectedTagIds.value.length > 0) return t('index.noTagMatch')
+  if (onlyFavorites.value) return t('index.noFavoriteMatch')
+  return t('index.noFilterMatch')
+})
+
+const emptyListText = computed(() => {
+  if (searchQuery.value) return t('index.noResults', { q: searchQuery.value })
+  if (skillsStore.skills.length > 0) return activeFilterEmptyText.value
+  return t('index.noSkills')
 })
 
 const filteredSkills = computed(() => {
@@ -271,17 +260,10 @@ function clearSearch() {
   searchQuery.value = ''
 }
 
-function truncateDescription(desc: string | null | undefined): string {
-  if (!desc) return t('state.noDesc')
-  if (desc.length > 100) {
-    return desc.substring(0, 100) + '...'
-  }
-  return desc
-}
-
 onMounted(async () => {
   document.addEventListener('click', onDocumentClick)
   await skillsStore.fetchSkills()
+  pruneToAvailable(new Set(availableTags.value.map((tag) => tag.id)))
   isLoading.value = false
 })
 
@@ -291,67 +273,6 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-/* 骨架屏样式（随 html[data-theme] 变量切换） */
-.skeleton-card {
-  background-color: var(--color-base-900);
-  border: 1px solid var(--color-base-800);
-  padding: 1.5rem;
-  border-radius: 0.75rem;
-}
-.skeleton-title, .skeleton-desc, .skeleton-desc-short, .skeleton-footer {
-  background: linear-gradient(
-    90deg,
-    var(--color-base-900) 25%,
-    var(--color-base-700) 50%,
-    var(--color-base-900) 75%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-loading 1.5s infinite;
-  border-radius: 4px;
-  height: 1rem;
-}
-.skeleton-title { width: 75%; margin-bottom: 1rem; height: 1.25rem; }
-.skeleton-desc { width: 100%; margin-bottom: 0.5rem; }
-.skeleton-desc-short { width: 85%; margin-bottom: 1.5rem; }
-.skeleton-footer { width: 100%; margin-top: auto; }
-
-@keyframes skeleton-loading {
-  0% { background-position: 200% 0; }
-  100% { background-position: -200% 0; }
-}
-
-/* 空状态 */
-.empty-state {
-  padding: 4rem 1rem;
-  text-align: center;
-  color: var(--color-base-400);
-  font-family: 'JetBrains Mono', monospace;
-}
-.empty-state-icon {
-  font-size: 3rem;
-  margin-bottom: 1rem;
-  opacity: 0.3;
-}
-.empty-state-text {
-  color: var(--color-base-400);
-  font-size: 0.875rem;
-  margin-bottom: 0.5rem;
-}
-
-.skill-visibility-badge {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 9999px;
-  font-family: "JetBrains Mono", monospace;
-  font-size: 0.625rem;
-  line-height: 1;
-  padding: 0.3rem 0.5rem;
-  color: #fcd34d;
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-  letter-spacing: 0.04em;
-}
-
 .home-filter-actions {
   display: flex;
   align-items: center;
@@ -498,8 +419,8 @@ onUnmounted(() => {
 }
 
 .tag-filter-option-check {
-  flex-shrink: 0;
   width: 1rem;
+  flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -507,9 +428,28 @@ onUnmounted(() => {
 }
 
 .tag-filter-option-label {
+  flex: 1;
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.tag-filter-option-count {
+  flex-shrink: 0;
+  min-width: 1.25rem;
+  padding: 0.05rem 0.35rem;
+  border-radius: 9999px;
+  background: color-mix(in srgb, var(--color-fg-strong) 8%, transparent);
+  color: var(--color-base-400);
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 1.2;
+  text-align: center;
+}
+
+.tag-filter-option--active .tag-filter-option-count {
+  background: rgba(var(--color-neon-rgb), 0.15);
+  color: var(--color-neon-400);
 }
 </style>

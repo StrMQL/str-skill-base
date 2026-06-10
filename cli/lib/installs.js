@@ -64,7 +64,12 @@ export function listInstalledSkills() {
     });
   }
 
-  return result.sort((a, b) => a.skillId.localeCompare(b.skillId));
+  return result.sort((a, b) => {
+    const at = a.latestInstalledAt || '';
+    const bt = b.latestInstalledAt || '';
+    if (at !== bt) return bt.localeCompare(at);
+    return a.skillId.localeCompare(b.skillId);
+  });
 }
 
 export function rememberSkillInstall({ skillId, installPath, version, ide, isGlobal }) {
@@ -149,4 +154,60 @@ export function clearSkillInstalls(skillId) {
   const installs = loadRegistry();
   delete installs[skillId];
   saveRegistry(installs);
+}
+
+export function isSafeSkillInstallPath(skillId, installPath) {
+  const normalizedSkillId = String(skillId || '').trim();
+  if (!normalizedSkillId || !installPath) return false;
+  return path.basename(path.resolve(installPath)) === normalizedSkillId;
+}
+
+export function deleteSkillInstallDirs(skillId, installPaths) {
+  const normalizedSkillId = String(skillId || '').trim();
+  if (!normalizedSkillId) throw new Error('skillId required');
+  if (!Array.isArray(installPaths) || installPaths.length === 0) {
+    throw new Error('installPaths required');
+  }
+
+  const requestedPaths = [...new Set(installPaths.map((p) => path.resolve(p)))];
+  const requested = new Set(requestedPaths);
+  const records = listSkillInstalls(normalizedSkillId);
+  const matched = new Set();
+  const deleted = [];
+  const skipped = [];
+
+  for (const record of records) {
+    if (!requested.has(record.installPath)) continue;
+    matched.add(record.installPath);
+
+    if (!isSafeSkillInstallPath(normalizedSkillId, record.installPath)) {
+      skipped.push({ ...record, reason: 'unsafe_path' });
+      continue;
+    }
+
+    try {
+      let existed = false;
+      if (fs.existsSync(record.installPath)) {
+        existed = true;
+        const stat = fs.lstatSync(record.installPath);
+        if (!stat.isDirectory()) {
+          skipped.push({ ...record, reason: 'not_directory' });
+          continue;
+        }
+        fs.rmSync(record.installPath, { recursive: true, force: true });
+      }
+      removeSkillInstall(normalizedSkillId, record.installPath);
+      deleted.push({ ...record, existed });
+    } catch (err) {
+      skipped.push({ ...record, reason: err?.message || String(err) });
+    }
+  }
+
+  for (const installPath of requestedPaths) {
+    if (!matched.has(installPath)) {
+      skipped.push({ installPath, version: '', installedAt: '', ide: '', isGlobal: false, reason: 'not_recorded' });
+    }
+  }
+
+  return { deleted, skipped };
 }

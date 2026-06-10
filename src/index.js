@@ -162,6 +162,7 @@ async function start() {
     await fastify.register(require('./routes/import-github'), { prefix: `${API_PREFIX}/skills` });
     await fastify.register(require('./routes/collaborators'), { prefix: `${API_PREFIX}/skills` });
     await fastify.register(require('./routes/tags'), { prefix: `${API_PREFIX}/tags` });
+    await fastify.register(require('./routes/collections'), { prefix: `${API_PREFIX}/collections` });
     await fastify.register(require('./routes/users'), { prefix: `${API_PREFIX}/users` });
     debugLog({ zh: 'API 路由已注册。', en: 'API routes registered.' });
 
@@ -233,6 +234,23 @@ async function start() {
       debugLog({ zh: 'CappyMascot 已禁用。', en: 'CappyMascot is disabled.' });
       fastify.decorate('cappy', { action: () => {} });
     }
+
+    const shutdown = async (signal) => {
+      debugLog(
+        { zh: `收到 ${signal}，正在关闭服务...`, en: `Received ${signal}, shutting down...` }
+      );
+      try {
+        if (enableCappy && cappy) {
+          cappy.stop?.();
+        }
+        await fastify.close();
+      } catch {
+        // ignore shutdown errors
+      }
+      process.exit(0);
+    };
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+    process.on('SIGINT', () => shutdown('SIGINT'));
 
     await fastify.listen({ port: PORT, host: HOST });
     infoLog({

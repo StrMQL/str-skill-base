@@ -25,6 +25,37 @@ data/
 | `--session-store` | - | `memory` 或 `sqlite` | `memory` |
 | `--no-cappy` | - | 关闭终端 Cappy | 默认开启 |
 | `--verbose` | `-v` | 调试日志 | 关闭 |
+| `--daemon` | - | 后台运行（PID/日志写在数据目录；默认关闭 Cappy） | 关闭 |
+| `--stop` | - | 停止 `--daemon` 进程 | - |
+| `--status` | - | 查看后台进程是否在跑 | - |
+
+不用 pm2 时，推荐固定数据目录并后台启动：
+
+```bash
+npx skill-base -d ./skill-data -p 8000 --daemon
+npx skill-base -d ./skill-data --status
+npx skill-base -d ./skill-data --stop
+```
+
+数据目录会生成 `skill-base.pid` 与 `skill-base.log`。`--stop` / `--status` 的 `-d` 必须与启动时一致。
+
+### 多实例
+
+后台进程的标识是**数据目录**（`-d` 解析后的绝对路径），不是端口。每个数据目录各自一份 PID/日志，互不影响：
+
+```bash
+npx skill-base -d ./team-a-data -p 8000 --daemon
+npx skill-base -d ./team-b-data -p 8001 --daemon
+
+npx skill-base -d ./team-a-data --status
+npx skill-base -d ./team-b-data --stop
+```
+
+注意：
+
+- 同一 `-d` 只能跑一个实例（共用一个 `skills.db`）；换端口再 `--daemon` 会报已在运行。
+- 不同实例必须用不同端口，否则第二个进程会绑定失败。
+- 未指定 `-d` 时，所有实例共用包内默认 `data/`，同样只能有一个后台进程。
 
 ## 环境变量
 

@@ -215,6 +215,31 @@ input::placeholder {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(var(--color-danger-rgb), 0.14);
+  color: var(--color-danger);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.35);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(var(--color-danger-rgb), 0.22);
+  border-color: rgba(var(--color-danger-rgb), 0.5);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-ghost {
   display: inline-flex;
   align-items: center;
@@ -296,6 +321,31 @@ input::placeholder {
   background: rgba(var(--color-base-900-rgb), 0.5);
 }
 
+.install-modal-footer {
+  align-items: center;
+  justify-content: space-between;
+}
+
+.install-footer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  min-width: 0;
+}
+
+.install-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+.footer-label-row {
+  margin: 0;
+  color: var(--color-fg-muted);
+  line-height: 1.35;
+}
+
 .target-option {
   display: flex;
   align-items: center;
@@ -318,6 +368,15 @@ input::placeholder {
   box-shadow: var(--shadow-accent-inset-xs);
 }
 
+.target-option.is-disabled {
+  cursor: not-allowed;
+  opacity: 0.58;
+}
+
+.target-option.is-disabled:hover {
+  border-color: var(--color-base-800);
+}
+
 .checkbox-box {
   width: 1.25rem;
   height: 1.25rem;
@@ -336,6 +395,15 @@ input::placeholder {
   font-size: 0.625rem;
 }
 
+.target-error-badge {
+  color: var(--color-danger, #ef4444);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.4);
+  border-radius: 999px;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.6875rem;
+  line-height: 1;
+}
+
 .label-row {
   display: flex;
   align-items: center;
@@ -348,4 +416,15 @@ input::placeholder {
 .label-row input {
   width: auto;
   accent-color: var(--color-accent);
+}
+
+@media (max-width: 640px) {
+  .install-modal-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .install-footer-actions {
+    justify-content: flex-end;
+  }
 }

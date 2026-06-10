@@ -82,6 +82,7 @@ skb publish ./my-skill --changelog "首次发布"
 | [桌面客户端](desktop.md) | 下载与功能 |
 | [CLI](cli.md) | `skb` 命令参考 |
 | [API](api.md) | HTTP API |
+| [Webhook 指南](webhook.md) | 配置、事件载荷、本地 Demo |
 | [更新日志](../CHANGELOG.md) | 服务端 / npm 版本说明 |
 | [作者与维护](author.md) | 维护契约、Author's Lab |
 

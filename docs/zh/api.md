@@ -135,7 +135,7 @@
 }
 ```
 
-`is_super_admin` 为 `1` 时表示 **超级管理员**（首个迁移的管理员或初始化时创建的首个管理员），可管理全局标签库；普通管理员不能创建/重命名/删除全局标签，但可为所管理的 Skill 分配已有标签。
+`is_super_admin` 为 `1` 时表示 **超级管理员**（首个迁移的管理员或初始化时创建的首个管理员），用于保护至少保留一名超级管理员；全局标签库由任意 **管理员**（`role === 'admin'`）维护，所有管理员均可创建/重命名/删除全局标签，并为所管理的 Skill 分配标签。
 
 ---
 
@@ -306,6 +306,8 @@
 ---
 
 ### 7. Skill Webhook 投递说明
+
+> 配置步骤、接入示例与本地 Demo 见 [Webhook 使用指南](webhook.md)。
 
 当某 Skill 配置了非空的 `webhook_url` 时，服务端在下列时机 **异步** 向该 URL 发送 **POST**，`Content-Type: application/json`。请求失败（超时、非 2xx 等）**不会**影响 API 主流程，也不会重试。发送前会做最小目标校验：允许 `localhost` / `127.0.0.1` / `::1`，拒绝私有网段、链路本地和常见云元数据地址。
 
@@ -553,7 +555,7 @@
 
 ## 标签模块 `/api/v1/tags`
 
-全局标签库由 **超级管理员** 维护；任意已登录用户可 **GET** 列表（供 Skill 详情分配标签时选择）。创建、重命名、删除仅 **超级管理员** 可调用。
+全局标签库由 **管理员** 维护；任意已登录用户可 **GET** 列表（供 Skill 详情分配标签时选择）。创建、重命名、删除需 **管理员** 权限。
 
 ### 1. 标签列表（含使用次数）
 
@@ -576,7 +578,7 @@
 
 **POST** `/api/v1/tags`
 
-**认证:** 需要 Session，且为 **超级管理员**
+**认证:** 需要 Session，且为 **管理员**
 
 **请求体:** `{ "name": "string" }`
 
@@ -584,7 +586,7 @@
 
 **错误码:**
 - `400` - 名称为空
-- `403` - 非超级管理员
+- `403` - 非管理员
 
 ---
 
@@ -592,7 +594,7 @@
 
 **PATCH** `/api/v1/tags/:tag_id`
 
-**认证:** 需要 Session，且为 **超级管理员**
+**认证:** 需要 Session，且为 **管理员**
 
 **请求体:** `{ "name": "string" }`
 
@@ -602,9 +604,111 @@
 
 **DELETE** `/api/v1/tags/:tag_id`
 
-**认证:** 需要 Session，且为 **超级管理员**
+**认证:** 需要 Session，且为 **管理员**
 
 删除后，各 Skill 上的该标签关联会被一并移除。
+
+---
+
+## 集合模块 `/api/v1/collections`
+
+集合是管理员维护的推荐包，用于“前端组必装”“产品经理常用”这类入口。一个 Skill 可属于多个集合；删除集合只移除关联，不删除 Skill。每个集合最多包含 **10** 个 Skill；`description` 最多 **120** 字（超出返回 `400`）。
+
+### 1. 集合列表（含 Skill 数）
+
+**GET** `/api/v1/collections`
+
+**认证:** 可选 Session（未登录也可浏览集合元数据）。`skill_count` 按当前用户可见性统计：未登录仅计 `public` Skill；已登录用户另计其有协作权限的 `private` Skill。
+
+**响应:**
+```json
+{
+  "collections": [
+    { "id": 1, "name": "前端组必装", "slug": "frontend-essentials", "description": "前端新人先装这些", "sort_order": 0, "skill_count": 3, "download_count": 12 }
+  ]
+}
+```
+
+---
+
+### 2. 集合详情
+
+**GET** `/api/v1/collections/:collection_ref`
+
+`:collection_ref` 可为数字 ID 或 `slug`（管理员设置的英文名）。**认证可选**；返回集合元数据与成员 Skill 列表。成员列表按浏览权限过滤：未登录仅 `public`；已登录用户另可见自己参与协作（含 owner）的 `private` Skill。管理员维护成员时可加 `?include_private=1` 获取完整成员列表。
+
+---
+
+### 3. 创建集合
+
+**POST** `/api/v1/collections`
+
+**认证:** 需要 Session，且为 **管理员**
+
+**请求体:**
+```json
+{
+  "name": "前端组必装",
+  "slug": "frontend-essentials",
+  "description": "前端新人先装这些",
+  "sort_order": 0
+}
+```
+
+`slug` 必填，小写字母开头，仅含小写字母、数字和连字符，全局唯一。用于下载文件名（`{slug}.zip`）与 CLI 安装 key。重复时返回 `409`。
+
+---
+
+### 4. 更新集合
+
+**PATCH** `/api/v1/collections/:collection_ref`
+
+**认证:** 需要 Session，且为 **管理员**
+
+可更新 `name`、`slug`、`description`、`sort_order`。`slug` 可选；若提供则同样校验格式与唯一性。
+
+---
+
+### 5. 删除集合
+
+**DELETE** `/api/v1/collections/:collection_ref`
+
+**认证:** 需要 Session，且为 **管理员**
+
+删除集合本身与 `collection_skills` 关联，不删除 Skill。
+
+---
+
+### 6. 替换集合成员
+
+**PUT** `/api/v1/collections/:collection_ref/skills`
+
+**认证:** 需要 Session，且为 **管理员**
+
+用 Skill ID 列表整体替换集合成员，列表顺序会写入集合内排序。最多 **10** 个 Skill；超出会返回 `400`。
+
+**请求体:**
+```json
+{
+  "skill_ids": ["git-commit-skill", "ppt-skill"]
+}
+```
+
+---
+
+### 7. 下载集合压缩包
+
+**GET** `/api/v1/collections/:collection_ref/download`
+
+**认证:** 可选 Session
+
+按当前用户可见性打包集合内全部可下载 Skill（未登录时仅包含 `public` Skill）（需有 `latest_version` 且版本 zip 存在），返回一个 zip 文件。zip 根目录下每个一级文件夹对应一个 Skill 目录，例如 `git-commit-skill/SKILL.md`，解压后可直接复制到 Agent 的 skills 目录。
+
+**响应:** `application/zip`，`Content-Disposition: attachment; filename="{slug}.zip"`
+
+若集合内没有可下载 Skill，返回 `404`。
+
+成功返回 zip 时，集合 `download_count` 会 +1；同时集合内每个被打包的 Skill 与其版本 `download_count` 也会各 +1。
 
 ---
 
@@ -631,6 +735,7 @@
 | `download_count` | number | 版本下载累计次数（仅统计 **download** 接口） |
 | `is_favorited` | boolean | 当前登录用户是否已收藏（未登录为 `false`） |
 | `tags` | array | `{ id, name }[]`，全局标签 |
+| `collections` | array | `{ id, name }[]`，所属集合 |
 | `owner` | object | 所有者信息 `{id, username}` |
 | `visibility` | string | `public` 或 `private` |
 | `created_at` | string | 创建时间 |

@@ -43,6 +43,7 @@ export SKB_BASE_URL=https://skill.example.com
 | `skb search <keyword>` | 搜索 Skill |
 | `skb install <target>` | 安装 Skill，支持 `name@version` |
 | `skb list` / `skb ls` | 浏览本地已记录的 Skill，并继续更新/删除/清记录 |
+| `skb delete <skill_id>` / `skb rm <skill_id>` | 删除一个或多个本地安装目录，并同步清理记录 |
 | `skb update <skill_id>` | 选择版本并更新本地安装目录 |
 | `skb publish [directory]` | 发布当前目录或指定目录中的 Skill |
 | `skb import-github <source>` | 从公开 GitHub 仓库导入 Skill（服务端拉取 zipball）；别名 `skb import` |
@@ -131,11 +132,13 @@ skb search "react component"
 ```bash
 skb install <skill_id>
 skb install <skill_id>@<version>
+skb install --collection <collection_id_or_slug>
 ```
 
 参数：
 
-- `target`：Skill ID，或 `skill_id@version`
+- `target`：Skill ID，或 `skill_id@version`（与 `--collection` 二选一）
+- `--collection <id_or_slug>`：安装集合内全部 Skill（一次下载集合 zip 并解压）
 - `-d, --dir <directory>`：直接安装到指定目录
 - `-i, --ide <ide>`：按 IDE 规则自动选择目标目录
 - `-g, --global`：安装到全局 IDE 配置目录，仅部分 IDE 支持
@@ -148,6 +151,10 @@ skb install vue-best-practices
 
 # 安装指定版本
 skb install vue-best-practices@v20260115.120000
+
+# 安装集合内全部 Skill
+skb install --collection 1 --ide cursor
+skb install --collection frontend-team --ide cursor
 
 # 安装到指定目录
 skb install vue-best-practices -d ./my-skills
@@ -188,6 +195,8 @@ skb install git-commit-rules --ide cursor --global
 
 若目标目录下已存在同名 Skill 文件夹，`skb install` 会先询问是否覆盖；确认后会删除旧目录再解压安装。
 
+安装集合时，若存在多个同名 Skill 目录，会列出全部冲突路径并一次性询问是否全部覆盖；取消则不会安装任何 Skill。
+
 安装成功后，CLI 会把这些信息记录到本地：
 
 - Skill ID
@@ -208,7 +217,7 @@ skb list
 skb ls
 ```
 
-这个命令会按 Skill 聚合展示本地记录，并允许你继续做这些事情：
+这个命令会按 Skill 聚合展示本地记录，默认最近安装/更新的 Skill 在前，并允许你继续做这些事情：
 
 - 查看某个 Skill 当前记录的安装目录
 - 进入更新流程
@@ -216,6 +225,24 @@ skb ls
 - 只清空记录，不删除磁盘文件
 
 别小看这个命令。没有这层本地记录，所谓“批量更新”就是空话。
+
+### `skb delete <skill_id>`
+
+```bash
+skb delete <skill_id>
+skb rm <skill_id>
+skb delete <skill_id> --all
+skb delete <skill_id> -d <directory> -y
+```
+
+这个命令直接进入某个 Skill 的删除流程：
+
+- 不带参数时，列出该 Skill 的全部已记录安装目录，支持勾选多个目录，也支持“全部目录”
+- `--all` 删除该 Skill 的全部已记录安装目录
+- `-d, --dir <directory>` 指定要删除的安装目录；也可以传父目录，CLI 会匹配 `<directory>/<skill_id>`；该参数可重复
+- `-y, --yes` 跳过确认提示，适合脚本中与 `--all` 或 `--dir` 配合使用
+
+删除会同时清理 `~/.skill-base/config.json` 中的安装记录。为避免误删，CLI 只会删除本地记录中、且目录名与 `skill_id` 一致的路径。
 
 ## 更新 Skill
 

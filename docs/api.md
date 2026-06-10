@@ -135,7 +135,7 @@ Get the currently logged-in user.
 }
 ```
 
-`is_super_admin` is `1` for a **super admin** (first migrated admin or the first admin created during initialization). Super admins can manage the global tag library; regular admins cannot create/rename/delete global tags but may assign existing tags to Skills they manage.
+`is_super_admin` is `1` for a **super admin** (first migrated admin or the first admin created during initialization), used to ensure at least one super admin remains. The global tag library is maintained by any **admin** (`role === 'admin'`); all admins can create/rename/delete global tags and assign tags to Skills they manage.
 
 ---
 
@@ -306,6 +306,8 @@ Update name, description, and optionally **Webhook URL** (for server notificatio
 ---
 
 ### 7. Skill Webhook delivery
+
+> Setup, examples, and local demo: [Webhook guide](webhook.md) · [中文](zh/webhook.md).
 
 When a Skill has a non-empty `webhook_url`, the server **asynchronously** sends **POST** requests to that URL with `Content-Type: application/json` at the times below. Request failures (timeout, non-2xx, etc.) do **not** affect the main API flow and are not retried. Before sending, minimal target validation runs: `localhost` / `127.0.0.1` / `::1` are allowed; private networks, link-local addresses, and common cloud metadata endpoints are rejected.
 
@@ -553,7 +555,7 @@ Password must be at least 6 characters. **Response:** `{ "ok": true, "message": 
 
 ## Tag module `/api/v1/tags`
 
-The global tag library is maintained by **super admins**; any logged-in user may **GET** the list (for assigning tags on Skill detail). Create, rename, and delete require **super admin**.
+The global tag library is maintained by **admins**; any logged-in user may **GET** the list (for assigning tags on Skill detail). Create, rename, and delete require **admin**.
 
 ### 1. Tag list (with usage count)
 
@@ -576,7 +578,7 @@ The global tag library is maintained by **super admins**; any logged-in user may
 
 **POST** `/api/v1/tags`
 
-**Auth:** Session required, **super admin**
+**Auth:** Session required, **admin**
 
 **Request body:** `{ "name": "string" }`
 
@@ -584,7 +586,7 @@ The global tag library is maintained by **super admins**; any logged-in user may
 
 **Error codes:**
 - `400` - Name is empty
-- `403` - Not a super admin
+- `403` - Not an admin
 
 ---
 
@@ -592,7 +594,7 @@ The global tag library is maintained by **super admins**; any logged-in user may
 
 **PATCH** `/api/v1/tags/:tag_id`
 
-**Auth:** Session required, **super admin**
+**Auth:** Session required, **admin**
 
 **Request body:** `{ "name": "string" }`
 
@@ -602,7 +604,7 @@ The global tag library is maintained by **super admins**; any logged-in user may
 
 **DELETE** `/api/v1/tags/:tag_id`
 
-**Auth:** Session required, **super admin**
+**Auth:** Session required, **admin**
 
 Removing a tag also removes its associations from all Skills.
 

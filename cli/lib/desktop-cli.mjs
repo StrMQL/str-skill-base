@@ -6,7 +6,7 @@ export async function loadDesktopCli(cliLibRoot) {
   const importCli = (subpath) =>
     import(pathToFileURL(path.join(cliLibRoot, subpath)).href);
 
-  const [configMod, authMod, apiMod, ideMod, installsMod, extractMod, updateHelpersMod] =
+  const [configMod, authMod, apiMod, ideMod, installsMod, extractMod, collectionMod, updateHelpersMod] =
     await Promise.all([
       importCli('config.js'),
       importCli('auth.js'),
@@ -14,6 +14,7 @@ export async function loadDesktopCli(cliLibRoot) {
       importCli('ide.js'),
       importCli('installs.js'),
       importCli('download-and-extract.mjs'),
+      importCli('download-collection.mjs'),
       importCli('update-helpers.mjs')
     ]);
 
@@ -24,6 +25,9 @@ export async function loadDesktopCli(cliLibRoot) {
     ...ideMod,
     ...installsMod,
     downloadAndExtract: extractMod.downloadAndExtract,
+    downloadCollectionZip: collectionMod.downloadCollectionZip,
+    extractCollectionZip: collectionMod.extractCollectionZip,
+    fetchCollectionDetail: collectionMod.fetchCollectionDetail,
     ...updateHelpersMod
   };
 }

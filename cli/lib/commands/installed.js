@@ -1,22 +1,17 @@
-import fs from 'node:fs';
 import path from 'node:path';
 import chalk from 'chalk';
 import prompts from 'prompts';
 import update from './update.js';
 import {
   clearSkillInstalls,
+  deleteSkillInstallDirs,
   listInstalledSkills,
-  pruneAllMissingInstalls,
-  removeSkillInstall
+  pruneAllMissingInstalls
 } from '../installs.js';
 import { pickMessage, formatDisplayTime } from '../i18n.js';
 
 function formatInstallTitle(installPath) {
   return path.relative(process.cwd(), installPath) || installPath;
-}
-
-function ensureSafeSkillPath(skillId, installPath) {
-  return path.basename(installPath) === skillId;
 }
 
 function dirsDescription(item) {
@@ -148,23 +143,18 @@ async function deleteLocalInstalls(skill) {
     return;
   }
 
-  const deleted = [];
-  const skipped = [];
-
-  for (const item of selectedInstalls) {
-    if (!ensureSafeSkillPath(skill.skillId, item.installPath)) {
-      skipped.push(
-        `${formatInstallTitle(item.installPath)}${pickMessage({ zh: '（路径校验失败）', en: ' (path check failed)' })}`
-      );
-      continue;
-    }
-
-    if (fs.existsSync(item.installPath)) {
-      fs.rmSync(item.installPath, { recursive: true, force: true });
-    }
-    removeSkillInstall(skill.skillId, item.installPath);
-    deleted.push(formatInstallTitle(item.installPath));
-  }
+  const result = deleteSkillInstallDirs(
+    skill.skillId,
+    selectedInstalls.map((item) => item.installPath)
+  );
+  const deleted = result.deleted.map((item) => formatInstallTitle(item.installPath));
+  const skipped = result.skipped.map(
+    (item) =>
+      `${formatInstallTitle(item.installPath)}${pickMessage({
+        zh: `（${item.reason}）`,
+        en: ` (${item.reason})`
+      })}`
+  );
 
   if (deleted.length > 0) {
     console.log(
