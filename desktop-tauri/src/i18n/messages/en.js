@@ -115,6 +115,8 @@ export default {
     addDir: 'Add folder…',
     addDirEmpty: 'Click “Add folder” to choose a destination',
     dirExists: 'Directory exists',
+    dirNotWritable: 'Not writable',
+    dirNotWritableDetail: 'This install directory is not writable. Fix permissions or use a custom folder.',
     overwrite: 'Overwrite existing folder with the same name',
     nestedConfirm: 'Confirm nested install inside agent skill directory',
     cancel: 'Cancel',

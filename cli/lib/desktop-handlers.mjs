@@ -62,15 +62,58 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
     }
   }
 
+  function describeFsError(err, targetPath) {
+    const code = err?.code || '';
+    const resolved = path.resolve(targetPath);
+    if (code === 'EACCES' || code === 'EPERM') {
+      return `没有权限写入安装目录：${resolved}。请修复该目录或上级目录的所有者/权限，或改用“自定义目录”选择一次目标路径后重试。`;
+    }
+    if (code === 'ENOTDIR') {
+      return `安装路径的上级不是目录：${resolved}`;
+    }
+    if (code === 'EROFS') {
+      return `安装目录所在文件系统是只读的：${resolved}`;
+    }
+    return err?.message || String(err);
+  }
+
+  function inspectWritableTarget(targetPath) {
+    const resolved = path.resolve(targetPath);
+    try {
+      if (fs.existsSync(resolved)) {
+        const stat = fs.lstatSync(resolved);
+        if (!stat.isDirectory()) {
+          return { writable: false, writeError: `安装目标不是目录：${resolved}` };
+        }
+        fs.accessSync(resolved, fs.constants.W_OK | fs.constants.X_OK);
+        return { writable: true, writeError: '' };
+      }
+
+      let parent = path.dirname(resolved);
+      while (!fs.existsSync(parent)) {
+        const next = path.dirname(parent);
+        if (next === parent) break;
+        parent = next;
+      }
+
+      const parentStat = fs.lstatSync(parent);
+      if (!parentStat.isDirectory()) {
+        return { writable: false, writeError: `安装路径的上级不是目录：${parent}` };
+      }
+      fs.accessSync(parent, fs.constants.W_OK | fs.constants.X_OK);
+      return { writable: true, writeError: '' };
+    } catch (err) {
+      return { writable: false, writeError: describeFsError(err, resolved) };
+    }
+  }
+
   function compareTargets(a, b) {
     const ae = a.exists ? 1 : 0;
     const be = b.exists ? 1 : 0;
     if (ae !== be) return be - ae;
-    if (!a.exists && !b.exists) {
-      const au = a.ide === 'universal' ? 1 : 0;
-      const bu = b.ide === 'universal' ? 1 : 0;
-      if (au !== bu) return bu - au;
-    }
+    const au = a.ide === 'universal' ? 1 : 0;
+    const bu = b.ide === 'universal' ? 1 : 0;
+    if (au !== bu) return bu - au;
     return a.name.localeCompare(b.name);
   }
 
@@ -90,7 +133,8 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
           path: targetPath,
           ide: config.id,
           global: true,
-          exists: targetPathExists(targetPath)
+          exists: targetPathExists(targetPath),
+          ...inspectWritableTarget(targetPath)
         });
       }
     }
@@ -125,10 +169,25 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         ide: config.id,
         global: false,
         projectRoot: root,
-        exists: targetPathExists(targetPath)
+        exists: targetPathExists(targetPath),
+        ...inspectWritableTarget(targetPath)
       });
     }
     return sortTargetsByExists(targets);
+  }
+
+  function ensureWritableTargetDir(targetDir) {
+    const status = inspectWritableTarget(targetDir);
+    if (!status.writable) {
+      const err = new Error(status.writeError);
+      err.code = 'TARGET_NOT_WRITABLE';
+      throw err;
+    }
+    try {
+      fs.mkdirSync(targetDir, { recursive: true });
+    } catch (err) {
+      throw new Error(describeFsError(err, targetDir));
+    }
   }
 
   function resolveInstallTarget(entry, installProjectRoot) {
@@ -212,6 +271,22 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       }
     }
     return null;
+  }
+
+  function removeFailedInstallPath(skillId, installPath) {
+    if (!cli.isSafeSkillInstallPath(skillId, installPath)) return;
+    try {
+      if (fs.existsSync(installPath) && fs.lstatSync(installPath).isDirectory()) {
+        fs.rmSync(installPath, { recursive: true, force: true });
+      }
+    } catch {
+      // Best-effort cleanup only; keep the original install error visible.
+    }
+  }
+
+  function installErrorMessage(err, targetPath) {
+    const message = describeFsError(err, targetPath);
+    return targetPath ? `${message} (${targetPath})` : message;
   }
 
   const handlers = {
@@ -433,7 +508,7 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
           return {
             ok: false,
             code: 'EXISTS',
-            detail: '目标目录已存在同名 Skill，请勾选覆盖后重试。',
+            detail: `目标目录已存在同名 Skill，请勾选覆盖后重试：${installPathCandidate}`,
             path: installPathCandidate
           };
         }
@@ -443,23 +518,28 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       let actualVersion = version;
 
       for (const spec of resolved) {
-        fs.mkdirSync(spec.targetDir, { recursive: true });
         const installPathCandidate = path.join(path.resolve(spec.targetDir), skillId);
-        if (fs.existsSync(installPathCandidate)) {
-          fs.rmSync(installPathCandidate, { recursive: true, force: true });
-        }
 
-        const result = await cli.downloadAndExtract(skillId, version, spec.targetDir);
-        actualVersion = result.version;
-        const installPath = path.join(result.targetDir, skillId);
-        cli.rememberSkillInstall({
-          skillId: result.skillId,
-          installPath,
-          version: result.version,
-          ide: spec.ide,
-          isGlobal: spec.global
-        });
-        installed.push({ installPath, version: result.version, label: spec.label });
+        try {
+          ensureWritableTargetDir(spec.targetDir);
+          if (fs.existsSync(installPathCandidate)) {
+            fs.rmSync(installPathCandidate, { recursive: true, force: true });
+          }
+          const result = await cli.downloadAndExtract(skillId, version, spec.targetDir);
+          actualVersion = result.version;
+          const installPath = path.join(result.targetDir, skillId);
+          cli.rememberSkillInstall({
+            skillId: result.skillId,
+            installPath,
+            version: result.version,
+            ide: spec.ide,
+            isGlobal: spec.global
+          });
+          installed.push({ installPath, version: result.version, label: spec.label });
+        } catch (err) {
+          removeFailedInstallPath(skillId, installPathCandidate);
+          throw new Error(installErrorMessage(err, installPathCandidate));
+        }
       }
 
       return {
@@ -514,26 +594,34 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         return {
           ok: false,
           code: 'EXISTS',
-          detail: '目标目录已存在同名 Skill，请勾选覆盖后重试。',
+          detail: `目标目录已存在同名 Skill，请勾选覆盖后重试：${conflictPaths.join(', ')}`,
           paths: conflictPaths
         };
       }
 
       const installed = [];
       for (const spec of resolved) {
-        fs.mkdirSync(spec.targetDir, { recursive: true });
-        for (const skill of skills) {
-          const installPathCandidate = path.join(path.resolve(spec.targetDir), skill.id);
-          if (fs.existsSync(installPathCandidate)) {
-            fs.rmSync(installPathCandidate, { recursive: true, force: true });
+        const targetDir = path.resolve(spec.targetDir);
+
+        try {
+          ensureWritableTargetDir(spec.targetDir);
+          for (const skill of skills) {
+            const installPathCandidate = path.join(targetDir, skill.id);
+            if (fs.existsSync(installPathCandidate)) {
+              fs.rmSync(installPathCandidate, { recursive: true, force: true });
+            }
           }
+          const buffer = await cli.downloadCollectionZip(collectionRef);
+          await cli.extractCollectionZip(buffer, spec.targetDir);
+        } catch (err) {
+          for (const skill of skills) {
+            removeFailedInstallPath(skill.id, path.join(targetDir, skill.id));
+          }
+          throw new Error(installErrorMessage(err, spec.targetDir));
         }
 
-        const buffer = await cli.downloadCollectionZip(collectionRef);
-        await cli.extractCollectionZip(buffer, spec.targetDir);
-
         for (const skill of skills) {
-          const installPath = path.join(path.resolve(spec.targetDir), skill.id);
+          const installPath = path.join(targetDir, skill.id);
           if (!fs.existsSync(installPath)) continue;
           cli.rememberSkillInstall({
             skillId: skill.id,
@@ -562,6 +650,7 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
     'skills:update': async (payload) => {
       const skillId = String(payload?.skillId || '').trim();
       const version = String(payload?.version || '').trim();
+      const updateAll = Boolean(payload?.all);
       let installPaths = Array.isArray(payload?.installPaths)
         ? payload.installPaths.filter((p) => typeof p === 'string')
         : null;
@@ -574,7 +663,9 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         throw new Error(`本地没有记录到 ${skillId} 的安装目录`);
       }
 
-      if (!installPaths || installPaths.length === 0) {
+      if (updateAll) {
+        installPaths = installs.map((i) => i.installPath);
+      } else if (!installPaths || installPaths.length === 0) {
         const implicit = cli.resolveImplicitSelectedInstalls(installs, options);
         if (!implicit) {
           return {

@@ -37,7 +37,13 @@ const loading = ref(false);
 function errMessage(e) {
   if (e == null) return 'unknown';
   if (typeof e === 'string') return e;
-  return e.message || String(e);
+  const direct = e.message || e.detail || e.error || e.data?.message || e.data?.detail;
+  if (direct) return String(direct);
+  try {
+    return JSON.stringify(e);
+  } catch {
+    return String(e);
+  }
 }
 
 // Settings modal
@@ -120,9 +126,22 @@ const canOpenUpdateVersionDiff = computed(() => {
 
 const canConfirmInstall = computed(() => {
   if (installTargetTab.value === 'custom') return selectedCustomDirs.value.length > 0;
-  if (installTargetTab.value === 'global') return selectedGlobalTargetIds.value.length > 0;
+  if (installTargetTab.value === 'global') {
+    return (
+      selectedGlobalTargetIds.value.length > 0 &&
+      selectedGlobalTargetIds.value.every((id) =>
+        targetIsWritable(globalTargets.value.find((target) => target.id === id))
+      )
+    );
+  }
   if (installTargetTab.value === 'project') {
-    return Boolean(installProjectRootPicked.value && selectedProjectTargetIds.value.length > 0);
+    return Boolean(
+      installProjectRootPicked.value &&
+        selectedProjectTargetIds.value.length > 0 &&
+        selectedProjectTargetIds.value.every((id) =>
+          targetIsWritable(projectTargets.value.find((target) => target.id === id))
+        )
+    );
   }
   return false;
 });
@@ -155,18 +174,41 @@ const canConfirmDelete = computed(
   () => deleteSelectedPaths.value.length > 0 && !deleting.value
 );
 
+const canConfirmUpdate = computed(() => {
+  if (updating.value || !updateSkill.value || !updateSelectedVersion.value) return false;
+  return updateInstallPaths.value.length <= 1 || updateSelectedPaths.value.length > 0;
+});
+
 function toggleSelection(list, id) {
   const idx = list.indexOf(id);
   if (idx === -1) list.push(id);
   else list.splice(idx, 1);
 }
 
+function targetIsWritable(target) {
+  return Boolean(target) && target.writable !== false;
+}
+
+function showTargetWriteError(target) {
+  showToast(target?.writeError || t('install.dirNotWritableDetail'));
+}
+
 function toggleGlobalTarget(id) {
+  const target = globalTargets.value.find((item) => item.id === id);
+  if (!targetIsWritable(target)) {
+    showTargetWriteError(target);
+    return;
+  }
   toggleSelection(selectedGlobalTargetIds.value, id);
 }
 
 function toggleProjectTarget(id) {
   if (projectAgentStepDisabled.value) return;
+  const target = projectTargets.value.find((item) => item.id === id);
+  if (!targetIsWritable(target)) {
+    showTargetWriteError(target);
+    return;
+  }
   toggleSelection(selectedProjectTargetIds.value, id);
 }
 
@@ -239,7 +281,7 @@ async function openUpdateVersionOnline(page = 'detail') {
     }
     await window.skb.invoke('skills:openWebPage', payload);
   } catch (e) {
-    showToast(t('toast.openFailed', { message: e.message }));
+    showToast(t('toast.openFailed', { message: errMessage(e) }));
   }
 }
 
@@ -252,7 +294,7 @@ async function revealInstallPath(installPath) {
   try {
     await window.skb.invoke('shell:revealPath', installPath);
   } catch (e) {
-    showToast(t('toast.revealFailed', { message: e.message }));
+    showToast(t('toast.revealFailed', { message: errMessage(e) }));
   }
 }
 
@@ -457,7 +499,7 @@ async function openMarketSkillDetail(skill) {
   try {
     await window.skb.invoke('skills:openWebPage', { skillId: skill.id });
   } catch (e) {
-    showToast(t('toast.openFailed', { message: e.message }));
+    showToast(t('toast.openFailed', { message: errMessage(e) }));
   }
 }
 
@@ -471,7 +513,7 @@ async function openCollectionOnline(collection) {
   try {
     await window.skb.invoke('skills:openWebPage', { collectionRef: ref });
   } catch (e) {
-    showToast(t('toast.openFailed', { message: e.message }));
+    showToast(t('toast.openFailed', { message: errMessage(e) }));
   }
 }
 
@@ -511,7 +553,7 @@ async function openInstallModal(skill) {
     installVersion.value =
       installVersions.value[0]?.version || skill.latest_version || skill.latest || '';
   } catch (e) {
-    showToast(t('toast.versionsLoadFailed', { message: e.message }));
+    showToast(t('toast.versionsLoadFailed', { message: errMessage(e) }));
     installModalOpen.value = false;
   } finally {
     installVersionsLoading.value = false;
@@ -644,7 +686,7 @@ async function confirmInstall() {
     showToast(t('toast.installedTo', { skillId, count }));
     await loadInstalled();
   } catch (e) {
-    showToast(t('toast.installFailed', { message: e.message }));
+    showToast(t('toast.installFailed', { message: errMessage(e) }));
   } finally {
     installing.value = false;
   }
@@ -659,13 +701,13 @@ async function openUpdateModal(skill) {
     updateSelectedVersion.value = updateVersions.value[0]?.version || skill.latest;
     updateInstallPaths.value = skill.installs;
   } catch (e) {
-    showToast(t('toast.versionsLoadFailed', { message: e.message }));
+    showToast(t('toast.versionsLoadFailed', { message: errMessage(e) }));
     updateModalOpen.value = false;
   }
 }
 
 async function confirmUpdate() {
-  if (!updateSkill.value) return;
+  if (!canConfirmUpdate.value) return;
   updating.value = true;
   try {
     const paths = updateInstallPaths.value.length > 1 ? updateSelectedPaths.value : null;
@@ -685,7 +727,7 @@ async function confirmUpdate() {
     showToast(t('toast.updated', { skillId: updateSkill.value.skillId }));
     await loadInstalled();
   } catch (e) {
-    showToast(t('toast.updateFailed', { message: e.message }));
+    showToast(t('toast.updateFailed', { message: errMessage(e) }));
   } finally {
     updating.value = false;
   }
@@ -733,7 +775,7 @@ async function confirmDelete() {
     }
     await loadInstalled();
   } catch (e) {
-    showToast(t('toast.deleteFailed', { message: e.message }));
+    showToast(t('toast.deleteFailed', { message: errMessage(e) }));
   } finally {
     deleting.value = false;
   }
@@ -744,13 +786,14 @@ async function updateOne(skill) {
   try {
     const result = await window.skb.invoke('skills:update', {
       skillId: skill.skillId,
-      version: skill.latest
+      version: skill.latest,
+      all: true
     });
     if (!result.ok) throw new Error(result.detail || t('toast.updateFailed', { message: '' }));
     showToast(t('toast.updatedTo', { skillId: skill.skillId, version: skill.latest }));
     await loadInstalled();
   } catch (e) {
-    showToast(t('toast.updateFailed', { message: e.message }));
+    showToast(t('toast.updateFailed', { message: errMessage(e) }));
   } finally {
     skill._updating = false;
   }
@@ -791,7 +834,7 @@ async function exchangePat() {
     await loadCollections({ silent: true });
     showToast(t('toast.loginSuccess', { username: result.username }));
   } catch (e) {
-    showToast(t('toast.verifyFailed', { message: e.message }));
+    showToast(t('toast.verifyFailed', { message: errMessage(e) }));
   } finally {
     isExchangingPat.value = false;
   }
@@ -813,7 +856,7 @@ async function testConnection() {
       throw new Error(result.detail || 'auth failed');
     }
   } catch (e) {
-    showToast(t('toast.connectionFailed', { message: e.message }));
+    showToast(t('toast.connectionFailed', { message: errMessage(e) }));
   } finally {
     isTestingConnection.value = false;
   }
@@ -831,7 +874,7 @@ async function logout() {
     await loadCollections({ silent: true });
     showToast(t('toast.loggedOut'));
   } catch (e) {
-    showToast(t('toast.logoutFailed', { message: e.message }));
+    showToast(t('toast.logoutFailed', { message: errMessage(e) }));
   }
 }
 
@@ -1551,7 +1594,8 @@ onUnmounted(() => {
                   'target-option',
                   {
                     selected: selectedGlobalTargetIds.includes(target.id),
-                    'target-exists': target.exists
+                    'target-exists': target.exists,
+                    'is-disabled': !targetIsWritable(target)
                   }
                 ]"
                 @click="toggleGlobalTarget(target.id)"
@@ -1564,6 +1608,13 @@ onUnmounted(() => {
                     <div class="target-name-row">
                       <p class="target-name">{{ target.name }}</p>
                       <span v-if="target.exists" class="target-exists-badge">{{ t('install.dirExists') }}</span>
+                      <span
+                        v-if="!targetIsWritable(target)"
+                        class="target-error-badge"
+                        :title="target.writeError"
+                      >
+                        {{ t('install.dirNotWritable') }}
+                      </span>
                     </div>
                     <p class="target-path font-mono">{{ formatPath(target.path, 64) }}</p>
                   </div>
@@ -1633,8 +1684,8 @@ onUnmounted(() => {
                     'target-option',
                     {
                       selected: selectedProjectTargetIds.includes(target.id),
-                      'is-disabled': projectAgentStepDisabled,
-                      'target-exists': target.exists
+                      'target-exists': target.exists,
+                      'is-disabled': projectAgentStepDisabled || !targetIsWritable(target)
                     }
                   ]"
                   @click="toggleProjectTarget(target.id)"
@@ -1647,6 +1698,13 @@ onUnmounted(() => {
                       <div class="target-name-row">
                         <p class="target-name">{{ target.name }}</p>
                         <span v-if="target.exists" class="target-exists-badge">{{ t('install.dirExists') }}</span>
+                        <span
+                          v-if="!targetIsWritable(target)"
+                          class="target-error-badge"
+                          :title="target.writeError"
+                        >
+                          {{ t('install.dirNotWritable') }}
+                        </span>
                       </div>
                       <p class="target-rel font-mono">{{ target.relPath }}</p>
                     </div>
@@ -1701,25 +1759,29 @@ onUnmounted(() => {
             </div>
           </div>
 
-          <label class="label-row">
-            <input v-model="installOverwrite" type="checkbox" />
-            {{ t('install.overwrite') }}
-          </label>
-          <label v-if="installNestedWarn" class="label-row">
-            <input v-model="installAcceptNested" type="checkbox" />
-            {{ t('install.nestedConfirm') }}
-          </label>
         </div>
-        <div class="modal-footer">
-          <button class="btn-ghost" @click="installModalOpen = false">{{ t('install.cancel') }}</button>
-          <button
-            class="btn-primary"
-            :disabled="installing || installVersionsLoading || (installKind === 'skill' && !installVersion) || !canConfirmInstall"
-            @click="confirmInstall"
-          >
-            <i v-if="installing" class="fa-solid fa-circle-notch fa-spin"></i>
-            {{ t('install.confirm') }}
-          </button>
+        <div class="modal-footer install-modal-footer">
+          <div class="install-footer-options">
+            <label class="label-row footer-label-row">
+              <input v-model="installOverwrite" type="checkbox" />
+              {{ t('install.overwrite') }}
+            </label>
+            <label v-if="installNestedWarn" class="label-row footer-label-row">
+              <input v-model="installAcceptNested" type="checkbox" />
+              {{ t('install.nestedConfirm') }}
+            </label>
+          </div>
+          <div class="install-footer-actions">
+            <button class="btn-ghost" @click="installModalOpen = false">{{ t('install.cancel') }}</button>
+            <button
+              class="btn-primary"
+              :disabled="installing || installVersionsLoading || (installKind === 'skill' && !installVersion) || !canConfirmInstall"
+              @click="confirmInstall"
+            >
+              <i v-if="installing" class="fa-solid fa-circle-notch fa-spin"></i>
+              {{ t('install.confirm') }}
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -1774,7 +1836,7 @@ onUnmounted(() => {
         </div>
         <div class="modal-footer">
           <button class="btn-ghost" @click="updateModalOpen = false">{{ t('update.cancel') }}</button>
-          <button class="btn-primary" :disabled="updating" @click="confirmUpdate">
+          <button class="btn-primary" :disabled="!canConfirmUpdate" @click="confirmUpdate">
             <i v-if="updating" class="fa-solid fa-circle-notch fa-spin"></i>
             {{ t('update.confirm') }}
           </button>

@@ -34,7 +34,7 @@ cd src-tauri && cargo check    # Rust 编译检查
 | `skills:getVersions` | yes* | 同上 |
 | `skills:getRemote` | yes* | 同上 |
 | `skills:install` | yes | 仅测参数校验；完整安装见手动 |
-| `skills:update` | yes | 仅测参数校验；`PICK_PATHS` 见手动 |
+| `skills:update` | yes | 参数校验；多路径 `PICK_PATHS` / `all` 见单元测试和手动 |
 | `skills:delete` | yes | 仅测参数校验；完整删除见手动 |
 | `skills:openWebPage` | yes | bridge 侧 URL 构建校验；打开浏览器见 Rust 手动 |
 | `collections:list` | yes* | 需 Skill Base 可达；离线时允许连接错误 |
@@ -82,6 +82,7 @@ cd src-tauri && cargo check    # Rust 编译检查
 
 - [ ] 已安装列表展示版本与远端 latest
 - [ ] 单路径 Skill 一键更新
+- [ ] 多路径 Skill → 一键“更新”和“同步更新所有”会更新全部已记录目录
 - [ ] 多路径 Skill → **PICK_PATHS** 选择后更新
 - [ ] 多路径 Skill → 删除弹窗勾选多个目录后删除
 - [ ] 多路径 Skill → 删除弹窗选择全部目录后删除全部记录

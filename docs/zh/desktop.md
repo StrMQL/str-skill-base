@@ -26,9 +26,9 @@
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-local.png" alt="Skill Base 桌面端 — 本地资产" width="720" />
 </p>
 
-**本地资产** — 汇总各 Agent 目录下的同名 Skill，显示是否已是最新。
+**本地资产** — 汇总各 Agent 目录下的同名 Skill，默认最近安装/更新在前，显示是否已是最新；快捷“更新/同步更新所有”会更新该 Skill 的所有已记录安装目录，也可以进入目录选择弹窗只更新部分目录。
 
-**安装** — 选全局 Agent、项目 Agent 或自定义目录；可覆盖同名文件夹。
+**安装** — 选全局 Agent、项目 Agent 或自定义目录；可覆盖同名文件夹。桌面端会标记不可写的安装目标，例如 `Universal (.agents)` 的全局目录对应 `~/.config/agents/skills`，若该目录或上级目录权限异常，请先修复权限，或改用“自定义目录”选择已授权的位置。
 
 <p align="center">
   <img src="https://github.com/ginuim/skill-base/raw/main/docs/images/desktop-install.png" alt="Skill Base 桌面端 — 安装到 Agent" width="720" />
@@ -45,4 +45,4 @@ CI：[`.github/workflows/desktop-release.yml`](../../.github/workflows/desktop-r
 开发文档：
 
 - [desktop-tauri/README.md](../../desktop-tauri/README.md) — 开发、构建、排障
-- [desktop-tauri/ACCEPTANCE.md](../../desktop-tauri/ACCEPTANCE.md) — 21 通道 IPC 验收
+- [desktop-tauri/ACCEPTANCE.md](../../desktop-tauri/ACCEPTANCE.md) — 25 通道 IPC 验收

@@ -64,7 +64,12 @@ export function listInstalledSkills() {
     });
   }
 
-  return result.sort((a, b) => a.skillId.localeCompare(b.skillId));
+  return result.sort((a, b) => {
+    const at = a.latestInstalledAt || '';
+    const bt = b.latestInstalledAt || '';
+    if (at !== bt) return bt.localeCompare(at);
+    return a.skillId.localeCompare(b.skillId);
+  });
 }
 
 export function rememberSkillInstall({ skillId, installPath, version, ide, isGlobal }) {

@@ -114,6 +114,8 @@ export default {
     addDir: '添加目录…',
     addDirEmpty: '请点击「添加目录」选择安装位置',
     dirExists: '目录已存在',
+    dirNotWritable: '不可写',
+    dirNotWritableDetail: '该安装目录不可写，请修复权限或改用自定义目录。',
     overwrite: '覆盖已存在的同名目录',
     nestedConfirm: '确认在 Agent skill 目录内嵌套安装',
     cancel: '取消',

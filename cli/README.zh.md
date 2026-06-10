@@ -91,7 +91,7 @@ skb publish ./my-skill --changelog "初始版本"
 ## 更新行为
 
 - `skb install` 会记录 Skill 实际安装到的目录，供后续 `skb update` 使用
-- `skb list` / `skb ls` 会列出本地所有已记录 Skill，并允许继续执行更新、删除本地文件、清除配置记录
+- `skb list` / `skb ls` 会按最近安装/更新时间列出本地已记录 Skill，并允许继续执行更新、删除本地文件、清除配置记录
 - `skb delete <skill_id>` 会列出该 Skill 已记录的安装目录，支持多选和“全部目录”
 - `skb update <skill_id>` 会先列出版本、changelog、提交人，再列出该 Skill 已记录的安装目录供多选
 - 如果要绕过本地记录，也可以继续使用 `skb update <skill_id> -d <directory>`
