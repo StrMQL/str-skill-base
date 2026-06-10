@@ -116,6 +116,7 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useI18n } from '@/composables/useI18n'
 import { useTheme } from '@/composables/useTheme'
+import { collectionsApi } from '@/services/api'
 import {
   Home,
   Upload,
@@ -166,6 +167,7 @@ const { currentLang: i18nLang, setLang: setI18nLang } = useI18n()
 const isMobileMenuOpen = ref(false)
 const showUserMenu = ref(false)
 const showLangMenu = ref(false)
+const hasCollections = ref(false)
 const currentLang = computed(() => i18nLang.value)
 
 const { resolved, setPreference } = useTheme()
@@ -183,16 +185,18 @@ const navItems = computed(() => {
       ]
     : props.items
 
-  const mapped = items.map(item => ({
-    ...item,
-    label: item.i18n ? t(item.i18n as any) : item.label,
-    icon: item.icon ?? inferNavIcon(item.href)
-  }))
+  const mapped = items
+    .map(item => ({
+      ...item,
+      label: item.i18n ? t(item.i18n as any) : item.label,
+      icon: item.icon ?? inferNavIcon(item.href)
+    }))
+    .filter(item => normalizePath(item.href) !== '/collections' || hasCollections.value)
 
   const result: typeof mapped = []
   for (const item of mapped) {
     result.push(item)
-    if (normalizePath(item.href) === '/') {
+    if (hasCollections.value && normalizePath(item.href) === '/') {
       result.push({
         href: '/collections',
         label: t('nav.collections'),
@@ -265,6 +269,15 @@ async function logout() {
   router.push('/login')
 }
 
+async function loadCollectionsAvailability() {
+  try {
+    const res = await collectionsApi.list()
+    hasCollections.value = (res.collections || []).length > 0
+  } catch {
+    hasCollections.value = false
+  }
+}
+
 function handleClickOutside() {
   showUserMenu.value = false
   showLangMenu.value = false
@@ -279,7 +292,10 @@ function handleResize() {
 onMounted(async () => {
   document.addEventListener('click', handleClickOutside)
   window.addEventListener('resize', handleResize)
-  await authStore.fetchUser()
+  await Promise.all([
+    authStore.fetchUser(),
+    loadCollectionsAvailability(),
+  ])
 })
 
 onUnmounted(() => {

@@ -46,6 +46,7 @@
             :collection="collection"
             :skill-count="skills.length"
             size="lg"
+            interactive
           />
         </div>
 

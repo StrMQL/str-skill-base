@@ -1,35 +1,58 @@
 <template>
   <div
-    class="book-cover"
+    class="cd-cover"
     :class="[
-      `book-cover--${size}`,
+      `cd-cover--${size}`,
       {
-        'book-cover--interactive': interactive,
-        'book-cover--loading': loading,
+        'cd-cover--interactive': interactive,
+        'cd-cover--loading': loading,
       },
     ]"
   >
-    <div v-if="loading" class="book-face book-face--skeleton">
+    <div v-if="loading" class="cd-case cd-case--skeleton">
       <div class="skeleton-shimmer" aria-hidden="true"></div>
     </div>
     <template v-else>
-      <div class="book-face" :style="faceStyle">
-        <span class="book-badge">COLLECTION</span>
-        <h2 class="book-title">{{ displayName }}</h2>
-        <p v-if="displayDescription" class="book-desc">{{ displayDescription }}</p>
-        <div class="book-footer">
-          <Package class="book-icon" :size="size === 'lg' ? 16 : 14" aria-hidden="true" />
-          <span class="book-count">{{ t('index.skillsCount', { count: displaySkillCount }) }}</span>
+      <div class="cd-case" :style="caseStyle">
+        <div class="cd-disc" aria-hidden="true">
+          <svg class="cd-ring-text" viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <path
+                :id="labelPathId"
+                d="M 100,100 m -70,0 a 70,70 0 1,1 140,0 a 70,70 0 1,1 -140,0"
+              />
+              <path
+                :id="namePathId"
+                d="M 100,100 m -83,0 a 83,83 0 1,0 166,0 a 83,83 0 1,0 -166,0"
+              />
+            </defs>
+            <text class="cd-label-text">
+              <textPath :href="`#${labelPathId}`" startOffset="7%">COLLECTION</textPath>
+            </text>
+            <text class="cd-name-text">
+              <textPath :href="`#${namePathId}`" startOffset="51%">{{ ringName }}</textPath>
+            </text>
+          </svg>
+
+          <div class="cd-core" aria-hidden="true"></div>
         </div>
+        <div class="cd-insert">
+          <span class="cd-eyebrow">COLLECTION</span>
+          <h2 class="cd-title">{{ displayName || 'Untitled Collection' }}</h2>
+          <p v-if="displayDescription" class="cd-description">{{ displayDescription }}</p>
+          <div class="cd-footer">
+            <span class="cd-count">{{ t('collections.coverSkillCount', { count: displaySkillCount }) }}</span>
+            <span class="cd-index">#{{ catalogNumber }}</span>
+          </div>
+        </div>
+        <span class="cd-case-notch" aria-hidden="true"></span>
       </div>
-      <div class="book-pages" aria-hidden="true"></div>
     </template>
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Package } from 'lucide-vue-next'
 import { useI18n } from '@/composables/useI18n'
 import { getCollectionCoverPreset } from '@/composables/useCollectionCoverColors'
 import type { Collection } from '@/services/api'
@@ -61,73 +84,148 @@ const displaySkillCount = computed(() => props.skillCount ?? props.collection?.s
 const displayColorIndex = computed(() => props.collection?.id ?? props.colorIndex ?? 0)
 
 const preset = computed(() => getCollectionCoverPreset(displayColorIndex.value))
+const pathIdSuffix = computed(() => `${displayColorIndex.value}-${(displayName.value || 'collection').replace(/[^a-zA-Z0-9_-]/g, '-').slice(0, 32)}`)
+const labelPathId = computed(() => `collection-label-path-${pathIdSuffix.value}`)
+const namePathId = computed(() => `collection-name-path-${pathIdSuffix.value}`)
+const ringName = computed(() => {
+  const name = (displayName.value || 'UNTITLED COLLECTION').toUpperCase()
+  return name.length > 56 ? `${name.slice(0, 53)}...` : name
+})
+const catalogNumber = computed(() => String(displayColorIndex.value).padStart(2, '0').slice(-2))
 
-const faceStyle = computed(() => ({
-  background: `
-    radial-gradient(circle at 88% 8%, rgba(255, 255, 255, 0.85) 0, transparent 28%),
-    linear-gradient(160deg, rgba(255, 255, 255, 0.55) 0%, transparent 42%),
-    ${preset.value.background}
-  `,
-  '--book-fg': preset.value.color,
-  '--book-muted': preset.value.descColor,
-  '--book-accent': preset.value.color,
-  '--book-line': 'rgba(255, 255, 255, 0.45)',
-  '--book-badge-bg': 'rgba(255, 255, 255, 0.72)',
-  '--book-badge-line': 'rgba(0, 0, 0, 0.08)',
+const caseStyle = computed(() => ({
+  '--cd-hue': String(preset.value.hue),
+  '--cd-fg': preset.value.color,
+  '--cd-muted': preset.value.descColor,
+  '--cd-accent': preset.value.color,
+  '--cd-disc-bg': preset.value.background,
+  '--cd-line': 'rgba(255, 255, 255, 0.34)',
+  '--cd-dark-line': 'rgba(15, 23, 42, 0.2)',
 }))
 </script>
 
 <style scoped>
-.book-cover {
+.cd-cover {
   position: relative;
   display: flex;
   flex-shrink: 0;
   filter:
-    drop-shadow(0 10px 22px rgba(15, 23, 42, 0.1))
-    drop-shadow(0 2px 6px rgba(15, 23, 42, 0.06));
+    drop-shadow(0 20px 34px rgba(0, 0, 0, 0.28))
+    drop-shadow(0 4px 10px rgba(0, 0, 0, 0.18));
   transition: transform 0.25s ease, filter 0.25s ease;
 }
 
-.book-cover--interactive:hover {
-  transform: translateY(-6px) rotate(-1deg);
+.cd-cover--interactive:hover {
+  transform: translateY(-6px) rotate(-0.35deg);
   filter:
-    drop-shadow(0 16px 28px rgba(15, 23, 42, 0.14))
-    drop-shadow(0 4px 10px rgba(15, 23, 42, 0.08));
+    drop-shadow(0 26px 42px rgba(0, 0, 0, 0.34))
+    drop-shadow(0 8px 16px rgba(0, 0, 0, 0.2));
 }
 
-.book-cover--sm {
-  width: 11.5rem;
+html[data-theme="light"] .cd-cover {
+  filter:
+    drop-shadow(0 18px 28px rgba(15, 23, 42, 0.12))
+    drop-shadow(0 3px 8px rgba(15, 23, 42, 0.08));
 }
 
-.book-cover--lg {
-  width: 14.5rem;
+html[data-theme="light"] .cd-cover--interactive:hover {
+  filter:
+    drop-shadow(0 24px 36px rgba(15, 23, 42, 0.16))
+    drop-shadow(0 6px 12px rgba(15, 23, 42, 0.1));
 }
 
-.book-face {
+.cd-cover--sm {
+  width: 13.5rem;
+}
+
+.cd-cover--lg {
+  width: 17rem;
+}
+
+.cd-case {
+  position: relative;
   flex: 1;
-  min-width: 0;
+  aspect-ratio: 1;
   display: flex;
-  flex-direction: column;
-  padding: 1rem 0.875rem 0.875rem;
-  border: 1px solid var(--book-line);
-  border-radius: 0.375rem;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.75);
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  overflow: visible;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.28), transparent 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.025)),
+    rgba(12, 13, 17, 0.58);
+  backdrop-filter: blur(10px) saturate(1.2);
+  border: 1px solid var(--cd-line);
+  border-radius: 0.5rem;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.52),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 1.15rem 0 1.25rem rgba(255, 255, 255, 0.07),
+    inset -1px 0 0 var(--cd-dark-line);
 }
 
-.book-cover--lg .book-face {
-  padding: 1.25rem 1rem 1rem;
-  min-height: 18rem;
+html[data-theme="light"] .cd-case {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.86), rgba(255, 255, 255, 0.16) 28%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.72), rgba(226, 232, 240, 0.34)),
+    rgba(248, 250, 252, 0.58);
+  border-color: rgba(100, 116, 139, 0.36);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.88),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.46),
+    inset 1.15rem 0 1.25rem rgba(15, 23, 42, 0.04),
+    inset -1px 0 0 rgba(15, 23, 42, 0.12);
 }
 
-.book-cover--sm .book-face {
-  min-height: 15rem;
+.cd-case > * {
+  z-index: 1;
 }
 
-.book-face--skeleton {
+.cd-case::before,
+.cd-case::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+}
+
+.cd-case::before {
+  z-index: 2;
+  inset: 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 0.32rem;
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .cd-case::before {
+  border-color: rgba(15, 23, 42, 0.16);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.44);
+}
+
+.cd-case::after {
+  z-index: 3;
+  top: 0;
+  bottom: 0;
+  left: 1.12rem;
+  width: 1px;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.42), transparent);
+  box-shadow: 0.24rem 0 0 rgba(15, 23, 42, 0.2);
+}
+
+html[data-theme="light"] .cd-case::after {
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.92), transparent);
+  box-shadow: 0.24rem 0 0 rgba(15, 23, 42, 0.08);
+}
+
+.cd-case--skeleton {
   background: var(--color-base-900);
   border-color: var(--color-base-800);
   box-shadow: none;
-  overflow: hidden;
+}
+
+html[data-theme="light"] .cd-case--skeleton {
+  background: var(--color-base-900);
+  border-color: var(--color-base-800);
 }
 
 .skeleton-shimmer {
@@ -143,81 +241,309 @@ const faceStyle = computed(() => ({
   100% { background-position: -200% 0; }
 }
 
-.book-pages {
+.cd-disc {
   position: absolute;
-  top: 4px;
-  right: -5px;
-  bottom: 4px;
-  width: 6px;
-  border-radius: 0 2px 2px 0;
-  background: repeating-linear-gradient(
-    180deg,
-    #f8fafc 0px,
-    #e2e8f0 1px,
-    #f8fafc 2px
-  );
-  border: 1px solid #cbd5e1;
-  box-shadow: inset 1px 0 1px rgba(255, 255, 255, 0.9);
+  top: 11%;
+  right: 7%;
+  bottom: 11%;
+  width: 78%;
+  border-radius: 9999px;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.92) 0 10%, rgba(255, 255, 255, 0.35) 10.5% 18%, transparent 18.5%),
+    conic-gradient(from 28deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.62), rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.84)),
+    radial-gradient(circle at 30% 25%, rgba(255, 255, 255, 0.7), rgba(255, 255, 255, 0.12) 34%, rgba(255, 255, 255, 0.24) 63%, rgba(255, 255, 255, 0.07)),
+    var(--cd-disc-bg);
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08),
+    inset 0 0 0 1.1rem rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    -0.6rem 0.45rem 1.4rem rgba(0, 0, 0, 0.18);
+  clip-path: inset(0 0 0 0 round 9999px);
+  -webkit-mask: radial-gradient(circle, transparent 0 7.5%, #000 8%);
+  mask: radial-gradient(circle, transparent 0 7.5%, #000 8%);
+  opacity: 0.92;
+  transition:
+    transform 0.38s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.38s ease,
+    opacity 0.38s ease;
+  will-change: transform;
 }
 
-.book-badge {
-  align-self: flex-start;
+html[data-theme="light"] .cd-disc {
+  border-color: rgba(255, 255, 255, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.06),
+    inset 0 0 0 1.1rem rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(15, 23, 42, 0.04),
+    -0.45rem 0.36rem 1rem rgba(15, 23, 42, 0.1);
+}
+
+.cd-cover--interactive:hover .cd-disc {
+  transform: translateX(16%) rotate(16deg);
+  opacity: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.08),
+    inset 0 0 0 1.1rem rgba(255, 255, 255, 0.06),
+    0 0 0 1px rgba(15, 23, 42, 0.06),
+    -0.9rem 0.8rem 1.6rem rgba(0, 0, 0, 0.22);
+}
+
+html[data-theme="light"] .cd-cover--interactive:hover .cd-disc {
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.06),
+    inset 0 0 0 1.1rem rgba(255, 255, 255, 0.1),
+    0 0 0 1px rgba(15, 23, 42, 0.04),
+    -0.75rem 0.65rem 1.35rem rgba(15, 23, 42, 0.14);
+}
+
+.cd-cover--lg.cd-cover--interactive:hover .cd-disc {
+  transform: translateX(20%) rotate(18deg);
+}
+
+.cd-disc::before,
+.cd-disc::after {
+  content: '';
+  position: absolute;
+  border-radius: 9999px;
+  pointer-events: none;
+}
+
+.cd-disc::before {
+  inset: 18%;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.05);
+}
+
+html[data-theme="light"] .cd-disc::before {
+  border-color: rgba(255, 255, 255, 0.78);
+  box-shadow: 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+
+.cd-disc::after {
+  inset: 36%;
+  border: 1px solid rgba(255, 255, 255, 0.72);
+  background:
+    radial-gradient(circle, transparent 0 28%, rgba(255, 255, 255, 0.28) 30% 62%, transparent 64%);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.05),
+    0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+
+html[data-theme="light"] .cd-disc::after {
+  border-color: rgba(255, 255, 255, 0.86);
+  box-shadow:
+    inset 0 0 0 1px rgba(15, 23, 42, 0.04),
+    0 0 0 1px rgba(255, 255, 255, 0.28);
+}
+
+.cd-ring-text {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 0.5625rem;
   font-weight: 700;
-  letter-spacing: 0.08em;
-  color: var(--book-accent);
-  background: var(--book-badge-bg);
-  padding: 0.15rem 0.35rem;
-  border-radius: 0.2rem;
-  border: 1px solid var(--book-badge-line);
-  margin-bottom: 0.75rem;
+  letter-spacing: 0.1em;
 }
 
-.book-title {
-  margin: 0;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.9375rem;
-  font-weight: 700;
-  line-height: 1.35;
-  color: var(--book-fg);
-  display: -webkit-box;
-  -webkit-line-clamp: 4;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
+.cd-label-text {
+  fill: var(--cd-accent);
+  font-size: 9px;
 }
 
-.book-cover--lg .book-title {
-  font-size: 1.125rem;
-  -webkit-line-clamp: 5;
+.cd-name-text {
+  fill: var(--cd-fg);
+  font-size: 10px;
 }
 
-.book-desc {
-  margin: 0.625rem 0 0;
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: var(--book-muted);
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  min-height: 0;
+.cd-core {
+  position: absolute;
+  inset: 39%;
+  z-index: 1;
+  border-radius: 9999px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  box-shadow:
+    inset 0 0 0 0.65rem rgba(255, 255, 255, 0.18),
+    0 0 0 1px rgba(15, 23, 42, 0.04);
 }
 
-.book-footer {
+.cd-insert {
+  position: absolute;
+  z-index: 2;
+  inset: 0.88rem 28% 0.88rem 1.45rem;
   display: flex;
-  align-items: center;
-  gap: 0.35rem;
-  margin-top: auto;
-  padding-top: 0.75rem;
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 0.6875rem;
-  color: var(--book-muted);
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.85rem 0.78rem 0.72rem;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.78), rgba(255, 255, 255, 0.12) 42%, rgba(255, 255, 255, 0.28)),
+    linear-gradient(160deg, hsla(var(--cd-hue), 85%, 58%, 0.34), transparent 58%),
+    var(--cd-disc-bg);
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  border-radius: 0.32rem;
+  box-shadow:
+    0.35rem 0 1rem rgba(0, 0, 0, 0.14),
+    inset 0 1px 0 rgba(255, 255, 255, 0.48);
 }
 
-.book-icon {
-  color: var(--book-accent);
-  opacity: 0.85;
+html[data-theme="light"] .cd-insert {
+  border-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    0.32rem 0 0.9rem rgba(15, 23, 42, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.68);
+}
+
+.cd-insert::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.2), transparent 42%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 10px);
+  mix-blend-mode: soft-light;
+}
+
+.cd-eyebrow,
+.cd-title,
+.cd-description,
+.cd-footer {
+  position: relative;
+  z-index: 1;
+}
+
+.cd-eyebrow {
+  align-self: flex-start;
+  padding: 0.12rem 0.34rem;
+  color: var(--cd-fg);
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 0.22rem;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.5rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+}
+
+html[data-theme="light"] .cd-eyebrow {
+  background: rgba(255, 255, 255, 0.72);
+  border-color: rgba(15, 23, 42, 0.06);
+}
+
+.cd-title {
+  margin: 0.72rem 0 0;
+  color: var(--cd-fg);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.92rem;
+  font-weight: 800;
+  line-height: 1.18;
+  text-wrap: pretty;
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 4;
+  overflow: hidden;
+}
+
+.cd-description {
+  margin: 0.52rem 0 0;
+  color: var(--cd-muted);
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+}
+
+.cd-footer {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.45rem;
+  margin-top: auto;
+  padding-top: 0.65rem;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.cd-count {
+  min-width: 0;
+  font-size: 0.56rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--cd-muted);
+}
+
+.cd-index {
+  flex-shrink: 0;
+  color: var(--cd-fg);
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.cd-case-notch {
+  position: absolute;
+  z-index: 4;
+  right: 0.5rem;
+  top: 50%;
+  width: 0.42rem;
+  height: 2.4rem;
+  transform: translateY(-50%);
+  border-radius: 9999px;
+  background: rgba(255, 255, 255, 0.14);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.18),
+    0 0 0 1px rgba(15, 23, 42, 0.12);
+}
+
+html[data-theme="light"] .cd-case-notch {
+  background: rgba(148, 163, 184, 0.24);
+  box-shadow:
+    inset 1px 0 0 rgba(255, 255, 255, 0.42),
+    0 0 0 1px rgba(15, 23, 42, 0.08);
+}
+
+.cd-cover--lg .cd-insert {
+  padding: 1rem 0.9rem 0.82rem;
+}
+
+.cd-cover--lg .cd-title {
+  font-size: 1.08rem;
+}
+
+.cd-cover--lg .cd-description {
+  font-size: 0.68rem;
+  -webkit-line-clamp: 4;
+}
+
+.cd-cover--lg .cd-label-text {
+  font-size: 8px;
+}
+
+.cd-cover--lg .cd-name-text {
+  font-size: 9px;
+}
+
+.cd-cover--lg .cd-count {
+  font-size: 0.62rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cd-cover,
+  .cd-disc {
+    transition: none;
+  }
+
+  .cd-cover--interactive:hover,
+  .cd-cover--interactive:hover .cd-disc,
+  .cd-cover--lg.cd-cover--interactive:hover .cd-disc {
+    transform: none;
+  }
 }
 </style>

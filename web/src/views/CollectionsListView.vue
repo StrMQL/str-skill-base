@@ -9,8 +9,8 @@
       <p class="collections-page-subtitle">{{ t('collections.subtitle') }}</p>
     </header>
 
-    <div v-if="isLoading" class="collections-shelf" :class="shelfLayoutClass(3)">
-      <div v-for="i in 3" :key="i" class="collection-shelf-item">
+    <div v-if="isLoading" class="collections-shelf" :class="shelfLayoutClass(1)">
+      <div class="collection-shelf-item">
         <CollectionBookCover loading size="sm" />
       </div>
     </div>
@@ -79,14 +79,17 @@ onMounted(async () => {
 <style scoped>
 .collections-page-header {
   text-align: center;
+  position: relative;
+  margin-top: 0.5rem;
 }
 
 .collections-page-title {
   margin: 0 0 0.5rem;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 1.75rem;
+  font-size: clamp(1.9rem, 4vw, 3.1rem);
   font-weight: 700;
   color: var(--color-fg-strong);
+  line-height: 1.12;
 }
 
 .collections-page-subtitle {
@@ -97,38 +100,66 @@ onMounted(async () => {
 }
 
 .collections-shelf {
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 2.5rem 3rem;
-  padding: 1rem 0 2rem;
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+  justify-items: center;
+  gap: 3rem 3.25rem;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 2.25rem 1.25rem 3.5rem;
 }
 
 .collections-shelf--single,
 .collections-shelf--pair {
+  grid-template-columns: repeat(var(--collection-count, 1), minmax(13.5rem, 17rem));
   justify-content: center;
   gap: 3rem 4rem;
 }
 
+.collections-shelf--pair {
+  --collection-count: 2;
+}
+
 .collections-shelf--single .collection-shelf-item {
-  max-width: 20rem;
+  max-width: 17rem;
 }
 
 .collections-shelf--pair .collection-shelf-item {
-  max-width: 18rem;
+  max-width: 15.5rem;
 }
 
 .collection-shelf-item {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 11.5rem;
+  width: 13.5rem;
   text-align: center;
 }
 
 .collection-shelf-link {
   text-decoration: none;
   color: inherit;
+  outline: none;
+  border-radius: 0.65rem;
+}
+
+.collection-shelf-link:focus-visible {
+  box-shadow: 0 0 0 2px rgba(var(--color-neon-rgb), 0.65);
+}
+
+@media (max-width: 640px) {
+  .collections-shelf {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+    padding: 1.75rem 0.75rem 2.75rem;
+  }
+
+  .collections-shelf--pair {
+    grid-template-columns: 1fr;
+  }
 }
 
 .collections-empty {
