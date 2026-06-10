@@ -78,7 +78,7 @@ cd desktop-tauri && pnpm verify:ipc && pnpm smoke:channels  # IPC 验收
 
 ### Desktop IPC
 
-- Channel 列表：`cli/lib/desktop-ipc-channels.mjs`（21 个）
+- Channel 列表：`cli/lib/desktop-ipc-channels.mjs`（22 个）
 - 业务逻辑：`cli/lib/desktop-handlers.mjs`
 - UI：`desktop-tauri/src/`（Vue）
 - Tauri：Rust `skb_invoke` → 5 个原生 channel（dialog/opener）+ 其余转发 Node bridge HTTP

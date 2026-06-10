@@ -52,6 +52,7 @@ export default {
     empty: '暂无本地安装记录，前往技能市场安装。',
     syncAll: '同步更新所有 ({count})',
     selectUpdateDirs: '选择更新目录',
+    delete: '删除本地安装',
     update: '更新',
     upToDate: '已是最新',
     viewAll: '+{count} 查看全部',
@@ -105,6 +106,15 @@ export default {
     pickDirs: '选择要更新的目录',
     cancel: '取消',
     confirm: '更新'
+  },
+  delete: {
+    title: '删除 / {skillId}',
+    warning: '将删除选中的本地 Skill 目录，并同步清理本地安装记录。此操作不可撤销。',
+    selected: '已选 {count} 个',
+    selectAll: '选择全部目录',
+    clearAll: '取消全选',
+    cancel: '取消',
+    confirm: '删除'
   },
   settings: {
     title: '设置',
@@ -160,6 +170,9 @@ export default {
     updateFailed: '更新失败: {message}',
     updated: '已更新 {skillId}',
     updatedTo: '已更新 {skillId} → v{version}',
+    deleteFailed: '删除失败: {message}',
+    deleted: '已删除 {count} 个目录',
+    deletedWithSkipped: '已删除 {count} 个目录，跳过 {skipped} 个',
     versionsLoadFailed: '加载版本失败: {message}'
   }
 };

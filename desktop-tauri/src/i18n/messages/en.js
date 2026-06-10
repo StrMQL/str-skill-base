@@ -52,6 +52,7 @@ export default {
     empty: 'No local installs yet. Install from the Skill Market.',
     syncAll: 'Sync all updates ({count})',
     selectUpdateDirs: 'Choose directories to update',
+    delete: 'Delete local install',
     update: 'Update',
     upToDate: 'Up to date',
     viewAll: '+{count} view all',
@@ -107,6 +108,16 @@ export default {
     cancel: 'Cancel',
     confirm: 'Update'
   },
+  delete: {
+    title: 'Delete / {skillId}',
+    warning:
+      'This deletes the selected local Skill directories and removes their install records. This cannot be undone.',
+    selected: '{count} selected',
+    selectAll: 'Select all directories',
+    clearAll: 'Clear selection',
+    cancel: 'Cancel',
+    confirm: 'Delete'
+  },
   settings: {
     title: 'Settings',
     generalHint: 'Set the interface language and theme.',
@@ -161,6 +172,9 @@ export default {
     updateFailed: 'Update failed: {message}',
     updated: 'Updated {skillId}',
     updatedTo: 'Updated {skillId} → v{version}',
+    deleteFailed: 'Delete failed: {message}',
+    deleted: 'Deleted {count} director(ies)',
+    deletedWithSkipped: 'Deleted {count} director(ies), skipped {skipped}',
     versionsLoadFailed: 'Failed to load versions: {message}'
   }
 };

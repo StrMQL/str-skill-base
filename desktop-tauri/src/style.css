@@ -215,6 +215,31 @@ input::placeholder {
   cursor: not-allowed;
 }
 
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: rgba(var(--color-danger-rgb), 0.14);
+  color: var(--color-danger);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.35);
+  border-radius: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(var(--color-danger-rgb), 0.22);
+  border-color: rgba(var(--color-danger-rgb), 0.5);
+}
+
+.btn-danger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-ghost {
   display: inline-flex;
   align-items: center;

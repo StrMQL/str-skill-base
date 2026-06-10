@@ -51,6 +51,11 @@ skb install <skill_id> -d ./target-dir
 skb list
 skb ls
 
+# Delete local installs (multi-select or all)
+skb delete <skill_id>
+skb delete <skill_id> --all
+skb delete <skill_id> -d ./target-dir -y
+
 # Interactive update
 skb update <skill_id>
 skb update <skill_id> -d ./target-dir
@@ -87,6 +92,7 @@ skb publish ./my-skill --changelog "Initial release"
 
 - `skb install` records where each skill was installed for later `skb update`
 - `skb list` / `skb ls` lists all recorded skills and lets you update, remove local files, or clear the record
+- `skb delete <skill_id>` lists recorded install directories for multi-select and supports selecting all directories
 - `skb update <skill_id>` shows versions, changelog, and author, then lists recorded install directories for multi-select
 - To ignore local records, use `skb update <skill_id> -d <directory>`
 

@@ -1,6 +1,6 @@
 # Desktop Tauri — Acceptance Checklist
 
-Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.mjs`。共 **21** 个 IPC channel（见 [IPC.md](./IPC.md)）。
+Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.mjs`。共 **22** 个 IPC channel（见 [IPC.md](./IPC.md)）。
 
 ## 自动化
 
@@ -10,7 +10,7 @@ Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.
 pnpm install
 pnpm smoke:bridge              # 快速：bridge 启动 + config:get
 pnpm smoke:bridge -- --bundled # 同上，测 esbuild 产物
-pnpm smoke:channels            # 16 个 bridge 通道（含校验/网络容错）
+pnpm smoke:channels            # bridge 通道（含校验/网络容错）
 pnpm verify:ipc                # channel 声明 / Rust 路由 / App.vue 引用
 cd src-tauri && cargo check    # Rust 编译检查
 ```
@@ -35,6 +35,7 @@ cd src-tauri && cargo check    # Rust 编译检查
 | `skills:getRemote` | yes* | 同上 |
 | `skills:install` | yes | 仅测参数校验；完整安装见手动 |
 | `skills:update` | yes | 仅测参数校验；`PICK_PATHS` 见手动 |
+| `skills:delete` | yes | 仅测参数校验；完整删除见手动 |
 | `skills:openWebPage` | yes | bridge 侧 URL 构建校验；打开浏览器见 Rust 手动 |
 
 ## Rust 原生通道（需手动 UI 点击）
@@ -73,11 +74,13 @@ cd src-tauri && cargo check    # Rust 编译检查
 - [ ] **NESTED_IDE_PATH**：在 IDE skills 目录内安装时提示嵌套确认
 - [ ] **EXISTS**：目标已有同名目录时提示覆盖
 
-### 4. 本地资产 / 更新
+### 4. 本地资产 / 更新 / 删除
 
 - [ ] 已安装列表展示版本与远端 latest
 - [ ] 单路径 Skill 一键更新
 - [ ] 多路径 Skill → **PICK_PATHS** 选择后更新
+- [ ] 多路径 Skill → 删除弹窗勾选多个目录后删除
+- [ ] 多路径 Skill → 删除弹窗选择全部目录后删除全部记录
 - [ ] 在 Finder/资源管理器中显示安装路径
 
 ### 5. Release 包

@@ -70,6 +70,13 @@ const updateInstallPaths = ref([]);
 const updateSelectedPaths = ref([]);
 const updating = ref(false);
 
+// Delete modal
+const deleteModalOpen = ref(false);
+const deleteSkill = ref(null);
+const deleteInstallPaths = ref([]);
+const deleteSelectedPaths = ref([]);
+const deleting = ref(false);
+
 // Paths modal
 const pathsModalOpen = ref(false);
 const pathsModalSkill = ref(null);
@@ -107,6 +114,16 @@ const canConfirmInstall = computed(() => {
 });
 
 const projectAgentStepDisabled = computed(() => !installProjectRootPicked.value);
+
+const allDeletePathsSelected = computed(
+  () =>
+    deleteInstallPaths.value.length > 0 &&
+    deleteSelectedPaths.value.length === deleteInstallPaths.value.length
+);
+
+const canConfirmDelete = computed(
+  () => deleteSelectedPaths.value.length > 0 && !deleting.value
+);
 
 function toggleSelection(list, id) {
   const idx = list.indexOf(id);
@@ -504,6 +521,54 @@ async function confirmUpdate() {
     showToast(t('toast.updateFailed', { message: e.message }));
   } finally {
     updating.value = false;
+  }
+}
+
+function openDeleteModal(skill) {
+  deleteSkill.value = skill;
+  deleteInstallPaths.value = skill.installs || [];
+  deleteSelectedPaths.value = deleteInstallPaths.value.map((item) => item.installPath);
+  deleteModalOpen.value = true;
+}
+
+function toggleDeletePath(p) {
+  const idx = deleteSelectedPaths.value.indexOf(p);
+  if (idx === -1) deleteSelectedPaths.value.push(p);
+  else deleteSelectedPaths.value.splice(idx, 1);
+}
+
+function toggleDeleteAllPaths() {
+  deleteSelectedPaths.value = allDeletePathsSelected.value
+    ? []
+    : deleteInstallPaths.value.map((item) => item.installPath);
+}
+
+async function confirmDelete() {
+  if (!deleteSkill.value || !canConfirmDelete.value) return;
+  deleting.value = true;
+  try {
+    const result = await window.skb.invoke('skills:delete', {
+      skillId: deleteSkill.value.skillId,
+      installPaths: deleteSelectedPaths.value
+    });
+
+    if (!result.ok) {
+      throw new Error(result.detail || t('toast.deleteFailed', { message: '' }));
+    }
+
+    const deletedCount = result.deleted?.length || 0;
+    const skippedCount = result.skipped?.length || 0;
+    deleteModalOpen.value = false;
+    if (skippedCount > 0) {
+      showToast(t('toast.deletedWithSkipped', { count: deletedCount, skipped: skippedCount }));
+    } else {
+      showToast(t('toast.deleted', { count: deletedCount }));
+    }
+    await loadInstalled();
+  } catch (e) {
+    showToast(t('toast.deleteFailed', { message: e.message }));
+  } finally {
+    deleting.value = false;
   }
 }
 
@@ -915,6 +980,14 @@ onUnmounted(() => {
                     {{ skill.skillId }}
                   </span>
                   <div class="skill-footer-actions">
+                    <button
+                      type="button"
+                      class="btn-icon skill-delete-btn"
+                      :title="t('installed.delete')"
+                      @click="openDeleteModal(skill)"
+                    >
+                      <i class="fa-solid fa-trash-can"></i>
+                    </button>
                     <button
                       type="button"
                       class="btn-icon skill-manage-btn"
@@ -1342,6 +1415,72 @@ onUnmounted(() => {
           <button class="btn-primary" :disabled="updating" @click="confirmUpdate">
             <i v-if="updating" class="fa-solid fa-circle-notch fa-spin"></i>
             {{ t('update.confirm') }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Modal -->
+    <div v-if="deleteModalOpen" class="modal-overlay" @click.self="deleteModalOpen = false">
+      <div class="modal-panel glass-panel delete-modal">
+        <div class="modal-header">
+          <h3>
+            <i class="fa-solid fa-trash-can text-danger"></i>
+            {{ t('delete.title', { skillId: deleteSkill?.skillId }) }}
+          </h3>
+          <button class="btn-icon" @click="deleteModalOpen = false">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        </div>
+        <div class="modal-body">
+          <div class="delete-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <span>{{ t('delete.warning') }}</span>
+          </div>
+
+          <div class="delete-selection-toolbar">
+            <button type="button" class="btn-ghost" @click="toggleDeleteAllPaths">
+              <i
+                class="fa-solid"
+                :class="allDeletePathsSelected ? 'fa-square-check' : 'fa-list-check'"
+              ></i>
+              {{ allDeletePathsSelected ? t('delete.clearAll') : t('delete.selectAll') }}
+            </button>
+            <span class="selection-count">
+              {{ t('delete.selected', { count: deleteSelectedPaths.length }) }}
+            </span>
+          </div>
+
+          <div class="delete-path-list">
+            <div
+              v-for="inst in deleteInstallPaths"
+              :key="inst.installPath"
+              :class="['target-option', { selected: deleteSelectedPaths.includes(inst.installPath) }]"
+              @click="toggleDeletePath(inst.installPath)"
+            >
+              <div class="target-info">
+                <div class="target-icon danger">
+                  <i class="fa-solid fa-folder-minus"></i>
+                </div>
+                <div class="target-info-text">
+                  <p class="target-path font-mono">{{ formatPath(inst.installPath, 72) }}</p>
+                  <p v-if="inst.version || inst.ide" class="target-rel font-mono">
+                    {{ [inst.version ? `v${inst.version}` : '', inst.ide].filter(Boolean).join(' · ') }}
+                  </p>
+                </div>
+              </div>
+              <div :class="['checkbox-box', { checked: deleteSelectedPaths.includes(inst.installPath) }]">
+                <i v-if="deleteSelectedPaths.includes(inst.installPath)" class="fa-solid fa-check"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-ghost" @click="deleteModalOpen = false">{{ t('delete.cancel') }}</button>
+          <button class="btn-danger" :disabled="!canConfirmDelete" @click="confirmDelete">
+            <i v-if="deleting" class="fa-solid fa-circle-notch fa-spin"></i>
+            <i v-else class="fa-solid fa-trash-can"></i>
+            {{ t('delete.confirm') }}
           </button>
         </div>
       </div>
@@ -2190,6 +2329,15 @@ onUnmounted(() => {
   background: var(--accent-bg-subtle) !important;
 }
 
+.skill-delete-btn {
+  color: var(--color-base-400) !important;
+}
+
+.skill-delete-btn:hover {
+  color: var(--color-danger) !important;
+  background: rgba(var(--color-danger-rgb), 0.1) !important;
+}
+
 .skill-action-btn {
   padding: 0.375rem 1rem;
   font-size: 0.75rem;
@@ -2597,6 +2745,53 @@ button.dir-tag {
 
 .text-indigo {
   color: var(--color-accent-soft);
+}
+
+.text-danger {
+  color: var(--color-danger);
+}
+
+.delete-modal {
+  width: min(640px, 94vw);
+}
+
+.delete-warning {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.625rem;
+  padding: 0.75rem;
+  margin-bottom: 1rem;
+  color: var(--color-danger);
+  background: rgba(var(--color-danger-rgb), 0.1);
+  border: 1px solid rgba(var(--color-danger-rgb), 0.24);
+  border-radius: 0.5rem;
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.delete-warning i {
+  margin-top: 0.125rem;
+  flex-shrink: 0;
+}
+
+.delete-selection-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.delete-path-list {
+  max-height: 18rem;
+  overflow-y: auto;
+  padding-right: 0.25rem;
+}
+
+.target-icon.danger {
+  color: var(--color-danger);
+  border-color: rgba(var(--color-danger-rgb), 0.25);
+  background: rgba(var(--color-danger-rgb), 0.08);
 }
 
 .target-list-filter {

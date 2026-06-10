@@ -31,7 +31,7 @@ Skill Base turns Skills into **publishable, versioned, and installable** team as
 | Capability | How |
 |------------|-----|
 | **Publish** | Web upload, `skb publish`, or GitHub import from public repos |
-| **Install / update** | `skb install` / `skb update` with IDE Skill paths and local install tracking; `skb install --collection <id>` for curated packs |
+| **Install / update / delete** | `skb install` / `skb update` / `skb delete` with IDE Skill paths and local install tracking; `skb install --collection <id>` for curated packs |
 | **Browse** | Web UI for search, version switching, changelogs, tags, collections (max 10 skills), favorites |
 | **Desktop** | Native desktop client — [download](docs/desktop.md) |
 | **Visibility** | `public` / `private` skills; owner / collaborator / user permissions |

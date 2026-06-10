@@ -43,6 +43,7 @@ export SKB_BASE_URL=https://skill.example.com
 | `skb search <keyword>` | 搜索 Skill |
 | `skb install <target>` | 安装 Skill，支持 `name@version` |
 | `skb list` / `skb ls` | 浏览本地已记录的 Skill，并继续更新/删除/清记录 |
+| `skb delete <skill_id>` / `skb rm <skill_id>` | 删除一个或多个本地安装目录，并同步清理记录 |
 | `skb update <skill_id>` | 选择版本并更新本地安装目录 |
 | `skb publish [directory]` | 发布当前目录或指定目录中的 Skill |
 | `skb import-github <source>` | 从公开 GitHub 仓库导入 Skill（服务端拉取 zipball）；别名 `skb import` |
@@ -223,6 +224,24 @@ skb ls
 - 只清空记录，不删除磁盘文件
 
 别小看这个命令。没有这层本地记录，所谓“批量更新”就是空话。
+
+### `skb delete <skill_id>`
+
+```bash
+skb delete <skill_id>
+skb rm <skill_id>
+skb delete <skill_id> --all
+skb delete <skill_id> -d <directory> -y
+```
+
+这个命令直接进入某个 Skill 的删除流程：
+
+- 不带参数时，列出该 Skill 的全部已记录安装目录，支持勾选多个目录，也支持“全部目录”
+- `--all` 删除该 Skill 的全部已记录安装目录
+- `-d, --dir <directory>` 指定要删除的安装目录；也可以传父目录，CLI 会匹配 `<directory>/<skill_id>`；该参数可重复
+- `-y, --yes` 跳过确认提示，适合脚本中与 `--all` 或 `--dir` 配合使用
+
+删除会同时清理 `~/.skill-base/config.json` 中的安装记录。为避免误删，CLI 只会删除本地记录中、且目录名与 `skill_id` 一致的路径。
 
 ## 更新 Skill
 

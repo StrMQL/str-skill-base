@@ -8,6 +8,7 @@ import search from '../lib/commands/search.js';
 import install from '../lib/commands/install.js';
 import installed from '../lib/commands/installed.js';
 import update from '../lib/commands/update.js';
+import deleteCommand from '../lib/commands/delete.js';
 import publish from '../lib/commands/publish.js';
 import importGithub from '../lib/commands/import-github.js';
 import ui from '../lib/commands/ui.js';
@@ -89,6 +90,22 @@ const S = {
   list: {
     zh: '浏览本地已安装的 skill，并更新/删除/清除记录',
     en: 'Browse locally installed skills and update/delete/clear records'
+  },
+  delete: {
+    zh: '删除本地已安装 Skill 的一个或多个目录',
+    en: 'Delete one or more local install directories for a Skill'
+  },
+  deleteDir: {
+    zh: '要删除的安装目录或父目录；可重复',
+    en: 'Install directory or parent directory to delete; repeatable'
+  },
+  deleteAll: {
+    zh: '删除该 Skill 的全部已记录安装目录',
+    en: 'Delete all recorded install directories for this Skill'
+  },
+  deleteYes: {
+    zh: '跳过确认提示',
+    en: 'Skip confirmation prompt'
   },
   publish: {
     zh: '发布新版本（默认当前目录，或可指定 Skill 文件夹）',
@@ -202,6 +219,18 @@ program
   .alias('ls')
   .description(pickMessage(S.list))
   .action(installed);
+
+program
+  .command('delete <skill_id>')
+  .alias('rm')
+  .description(pickMessage(S.delete))
+  .option('-d, --dir <directory>', pickMessage(S.deleteDir), (value, previous) => {
+    previous.push(value);
+    return previous;
+  }, [])
+  .option('--all', pickMessage(S.deleteAll), false)
+  .option('-y, --yes', pickMessage(S.deleteYes), false)
+  .action(deleteCommand);
 
 program
   .command('publish [directory]')

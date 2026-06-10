@@ -501,6 +501,39 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         updated.push({ installPath: install.installPath, version: result.version });
       }
       return { ok: true, updated };
+    },
+
+    'skills:delete': async (payload) => {
+      const skillId = String(payload?.skillId || '').trim();
+      const installPaths = Array.isArray(payload?.installPaths)
+        ? payload.installPaths.filter((p) => typeof p === 'string' && p.trim())
+        : [];
+      const deleteAll = Boolean(payload?.all);
+
+      if (!skillId) throw new Error('skillId required');
+
+      const installs = cli.listSkillInstalls(skillId);
+      if (installs.length === 0) {
+        throw new Error(`本地没有记录到 ${skillId} 的安装目录`);
+      }
+
+      const targetPaths = deleteAll ? installs.map((item) => item.installPath) : installPaths;
+      if (targetPaths.length === 0) {
+        throw new Error('请至少选择一个删除目录');
+      }
+
+      const result = cli.deleteSkillInstallDirs(skillId, targetPaths);
+      if (result.deleted.length === 0) {
+        return {
+          ok: false,
+          code: 'NO_DELETED',
+          detail: '未删除任何目录',
+          deleted: result.deleted,
+          skipped: result.skipped
+        };
+      }
+
+      return { ok: true, deleted: result.deleted, skipped: result.skipped };
     }
   };
 

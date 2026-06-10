@@ -205,6 +205,13 @@ async function runAllChannels() {
       }
     },
     {
+      name: 'skills:delete (validation)',
+      run: async () => {
+        const r = await bridgeInvoke('skills:delete', [{}]);
+        assertError('skills:delete', r, 'skillId required');
+      }
+    },
+    {
       name: 'skills:openWebPage (validation)',
       run: async () => {
         const r = await bridgeInvoke('skills:openWebPage', [{}]);
