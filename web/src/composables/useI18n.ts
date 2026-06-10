@@ -26,7 +26,7 @@ const zh: Record<string, string> = {
 
   // Collections browse pages
   'collections.title': '技能集合',
-  'collections.subtitle': '由管理员精心策划的技能推荐包，支持一键批量安装',
+  'collections.subtitle': '由管理员精心策划的技能推荐包，可以一键批量安装角色需要的数字资产',
   'collections.empty': '暂无集合',
   'collections.emptyHint': '集合是管理员为团队或岗位策划的技能推荐包，例如「前端组必装」「产品经理常用」。同一技能可出现在多个集合中，支持 skb 一键批量安装。管理员创建后，将在这里展示。',
   'collections.emptyAdminCta': '前往创建集合',
@@ -625,7 +625,7 @@ const en: Record<string, string> = {
 
   // Collections browse pages
   'collections.title': 'Collections',
-  'collections.subtitle': 'Curated skill recommendation packs by administrators, supporting one-click batch installation',
+  'collections.subtitle': 'Curated skill recommendation packs by administrators, can be installed by roles at once',
   'collections.empty': 'No collections yet',
   'collections.emptyHint': 'Collections are curated skill packs for teams or roles — for example "Frontend Essentials" or "PM Toolkit". A skill can appear in multiple collections and be batch-installed with skb. They will show up here once an administrator creates them.',
   'collections.emptyAdminCta': 'Create a collection',
