@@ -157,7 +157,7 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
 
   function buildProjectTargets(cwd) {
     const { IDE_CONFIGS, findProjectRoot } = cli;
-    const root = findProjectRoot(cwd || deps.getProjectRoot() || os.homedir());
+    const root = cwd || findProjectRoot(deps.getProjectRoot() || os.homedir());
     const targets = [];
     for (const config of Object.values(IDE_CONFIGS)) {
       const targetPath = path.join(root, config.projectPath);
