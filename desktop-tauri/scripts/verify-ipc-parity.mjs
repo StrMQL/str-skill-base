@@ -1,5 +1,5 @@
 /**
- * Verify 22 IPC channels are declared, routed, and referenced consistently.
+ * Verify IPC channels are declared, routed, and referenced consistently.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -36,8 +36,8 @@ function fail(msg) {
 
 console.log(`IPC channels declared: ${DESKTOP_IPC_CHANNELS.length}`);
 
-if (DESKTOP_IPC_CHANNELS.length !== 22) {
-  fail(`expected 22 channels, got ${DESKTOP_IPC_CHANNELS.length}`);
+if (DESKTOP_IPC_CHANNELS.length !== 25) {
+  fail(`expected 25 channels, got ${DESKTOP_IPC_CHANNELS.length}`);
 }
 
 if (!skbJs.includes('DESKTOP_IPC_CHANNELS')) {

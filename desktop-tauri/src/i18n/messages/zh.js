@@ -2,11 +2,13 @@ export default {
   nav: {
     installed: '本地资产管理',
     market: '技能市场',
+    collections: '技能集合',
     settings: '设置'
   },
   tabs: {
     installed: '本地资产',
-    market: '技能市场'
+    market: '技能市场',
+    collections: '技能集合'
   },
   theme: {
     light: '浅色',
@@ -23,8 +25,14 @@ export default {
   search: {
     installed: '搜索本地 Skill...',
     market: '搜索技能名称、描述...',
+    collections: '搜索集合名称、英文名...',
     clear: '清除搜索',
     agentFilter: '筛选 Agent（名称或路径）...'
+  },
+  view: {
+    mode: '视图模式',
+    card: '卡片视图',
+    list: '列表视图'
   },
   market: {
     favoritesOnly: '仅收藏',
@@ -59,6 +67,20 @@ export default {
     notMounted: '未挂载',
     revealHint: '在 Finder / 资源管理器中打开'
   },
+  collections: {
+    title: '技能集合',
+    subtitle: '管理员维护的推荐包，可一次安装一组 Skill。',
+    refresh: '刷新集合',
+    loading: '加载中...',
+    empty: '暂无集合。',
+    emptyFiltered: '无匹配集合，请调整搜索条件。',
+    noDesc: '暂无说明',
+    back: '返回集合列表',
+    openOnline: '在线查看',
+    install: '安装集合',
+    skillCount: '{count} 个 Skill',
+    emptySkills: '该集合暂无可见 Skill'
+  },
   version: {
     latest: '（最新）',
     details: '版本详情',
@@ -70,6 +92,8 @@ export default {
   },
   install: {
     title: '安装 / {name}',
+    collectionTitle: '安装集合 / {name}',
+    collectionSummary: '将安装集合内 {count} 个可用 Skill',
     version: '版本',
     targets: '安装目标',
     global: '全局 Agent',
@@ -167,6 +191,7 @@ export default {
     configureServerFirst: '请先在设置中配置服务器地址',
     installFailed: '安装失败: {message}',
     installedTo: '已安装 {skillId} 到 {count} 个目录',
+    collectionInstalled: '已安装集合 {name}，共 {count} 个 Skill 目录',
     updateFailed: '更新失败: {message}',
     updated: '已更新 {skillId}',
     updatedTo: '已更新 {skillId} → v{version}',

@@ -233,19 +233,19 @@ async function installSingleSkill(target, options) {
   }
 }
 
-async function installCollection(collectionIdRaw, options) {
-  const collectionId = Number.parseInt(String(collectionIdRaw), 10);
-  if (!Number.isInteger(collectionId) || collectionId <= 0) {
-    console.log(chalk.red(pickMessage({ zh: '无效的集合 ID', en: 'Invalid collection id' })));
+async function installCollection(collectionRefRaw, options) {
+  const collectionRef = String(collectionRefRaw || '').trim();
+  if (!collectionRef) {
+    console.log(chalk.red(pickMessage({ zh: '无效的集合 ID 或 slug', en: 'Invalid collection id or slug' })));
     process.exit(1);
   }
 
   let detail;
   try {
-    detail = await fetchCollectionDetail(collectionId);
+    detail = await fetchCollectionDetail(collectionRef);
   } catch (err) {
     if (String(err.message).includes('HTTP 404')) {
-      console.log(chalk.red(`${pickMessage(M.collectionNotFound)} #${collectionId}`));
+      console.log(chalk.red(`${pickMessage(M.collectionNotFound)} ${collectionRef}`));
       process.exit(1);
     }
     console.log(chalk.red(`${pickMessage(M.installFailed)}${err.message}`));
@@ -269,10 +269,10 @@ async function installCollection(collectionIdRaw, options) {
     await confirmOverwriteAll(conflictPaths);
   }
 
-  const spinner = ora(`${pickMessage(M.downloadingCollection)}#${collectionId}...`).start();
+  const spinner = ora(`${pickMessage(M.downloadingCollection)}${collectionRef}...`).start();
 
   try {
-    const buffer = await downloadCollectionZip(collectionId);
+    const buffer = await downloadCollectionZip(collectionRef);
     await extractCollectionZip(buffer, resolvedTargetDir);
 
     for (const skill of skills) {

@@ -132,13 +132,13 @@ skb search "react component"
 ```bash
 skb install <skill_id>
 skb install <skill_id>@<version>
-skb install --collection <collection_id>
+skb install --collection <collection_id_or_slug>
 ```
 
 参数：
 
 - `target`：Skill ID，或 `skill_id@version`（与 `--collection` 二选一）
-- `--collection <id>`：安装集合内全部 Skill（一次下载集合 zip 并解压）
+- `--collection <id_or_slug>`：安装集合内全部 Skill（一次下载集合 zip 并解压）
 - `-d, --dir <directory>`：直接安装到指定目录
 - `-i, --ide <ide>`：按 IDE 规则自动选择目标目录
 - `-g, --global`：安装到全局 IDE 配置目录，仅部分 IDE 支持
@@ -154,6 +154,7 @@ skb install vue-best-practices@v20260115.120000
 
 # 安装集合内全部 Skill
 skb install --collection 1 --ide cursor
+skb install --collection frontend-team --ide cursor
 
 # 安装到指定目录
 skb install vue-best-practices -d ./my-skills

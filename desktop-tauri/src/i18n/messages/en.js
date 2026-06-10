@@ -2,11 +2,13 @@ export default {
   nav: {
     installed: 'Local Assets',
     market: 'Skill Market',
+    collections: 'Collections',
     settings: 'Settings'
   },
   tabs: {
     installed: 'Local Assets',
-    market: 'Skill Market'
+    market: 'Skill Market',
+    collections: 'Collections'
   },
   theme: {
     light: 'Light',
@@ -23,8 +25,14 @@ export default {
   search: {
     installed: 'Search local skills...',
     market: 'Search by name or description...',
+    collections: 'Search collections by name or slug...',
     clear: 'Clear search',
     agentFilter: 'Filter agents (name or path)...'
+  },
+  view: {
+    mode: 'View mode',
+    card: 'Card view',
+    list: 'List view'
   },
   market: {
     favoritesOnly: 'Favorites only',
@@ -59,6 +67,20 @@ export default {
     notMounted: 'Not mounted',
     revealHint: 'Reveal in Finder / file manager'
   },
+  collections: {
+    title: 'Collections',
+    subtitle: 'Curated packs maintained by admins. Install a group of skills at once.',
+    refresh: 'Refresh collections',
+    loading: 'Loading...',
+    empty: 'No collections yet.',
+    emptyFiltered: 'No matching collections. Adjust your search.',
+    noDesc: 'No description',
+    back: 'Back to collections',
+    openOnline: 'View online',
+    install: 'Install collection',
+    skillCount: '{count} skills',
+    emptySkills: 'No visible skills in this collection'
+  },
   version: {
     latest: ' (latest)',
     details: 'Version details',
@@ -70,6 +92,8 @@ export default {
   },
   install: {
     title: 'Install / {name}',
+    collectionTitle: 'Install collection / {name}',
+    collectionSummary: 'This will install {count} available skills from the collection',
     version: 'Version',
     targets: 'Install targets',
     global: 'Global agents',
@@ -169,6 +193,7 @@ export default {
     configureServerFirst: 'Configure the server URL in Settings first',
     installFailed: 'Install failed: {message}',
     installedTo: 'Installed {skillId} to {count} location(s)',
+    collectionInstalled: 'Installed collection {name}: {count} skill folders',
     updateFailed: 'Update failed: {message}',
     updated: 'Updated {skillId}',
     updatedTo: 'Updated {skillId} → v{version}',

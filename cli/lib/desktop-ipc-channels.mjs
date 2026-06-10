@@ -20,5 +20,8 @@ export const DESKTOP_IPC_CHANNELS = [
   'skills:install',
   'skills:update',
   'skills:delete',
-  'skills:openWebPage'
+  'skills:openWebPage',
+  'collections:list',
+  'collections:get',
+  'collections:install'
 ];

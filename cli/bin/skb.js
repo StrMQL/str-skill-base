@@ -68,8 +68,8 @@ const S = {
     en: 'Install a Skill (supports name@version) or a collection (--collection)'
   },
   installCollection: {
-    zh: '安装集合内全部 Skill（集合 ID）',
-    en: 'Install all skills in a collection (collection id)'
+    zh: '安装集合内全部 Skill（集合 ID 或 slug）',
+    en: 'Install all skills in a collection (collection id or slug)'
   },
   installDir: {
     zh: '解压到的目标目录',
@@ -201,7 +201,7 @@ program
   .option('-i, --ide <agent>', installIdeOptionDescription())
   .option('-a, --agent <agent>', installIdeOptionDescription())
   .option('-g, --global', pickMessage(S.installGlobal), false)
-  .option('--collection <id>', pickMessage(S.installCollection))
+  .option('--collection <id_or_slug>', pickMessage(S.installCollection))
   .action((target, options) => {
     // Alias --agent to --ide
     if (options.agent) options.ide = options.agent;

@@ -1,6 +1,6 @@
 # Desktop Tauri — Acceptance Checklist
 
-Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.mjs`。共 **22** 个 IPC channel（见 [IPC.md](./IPC.md)）。
+Tauri 桌面客户端 UI 在 `src/`，业务逻辑在 `cli/lib/desktop-handlers.mjs`。共 **25** 个 IPC channel（见 [IPC.md](./IPC.md)）。
 
 ## 自动化
 
@@ -37,6 +37,9 @@ cd src-tauri && cargo check    # Rust 编译检查
 | `skills:update` | yes | 仅测参数校验；`PICK_PATHS` 见手动 |
 | `skills:delete` | yes | 仅测参数校验；完整删除见手动 |
 | `skills:openWebPage` | yes | bridge 侧 URL 构建校验；打开浏览器见 Rust 手动 |
+| `collections:list` | yes* | 需 Skill Base 可达；离线时允许连接错误 |
+| `collections:get` | yes | 仅测参数校验；详情加载见手动 |
+| `collections:install` | yes | 仅测参数校验；完整批量安装见手动 |
 
 ## Rust 原生通道（需手动 UI 点击）
 
@@ -71,6 +74,7 @@ cd src-tauri && cargo check    # Rust 编译检查
 - [ ] **全局** Agent 目录安装
 - [ ] **项目** Agent 目录安装（切换项目根后路径正确）
 - [ ] **自定义**目录安装
+- [ ] **集合**安装：集合页打开详情 → 安装集合 → 所含 Skill 目录批量落地并写入本地安装记录
 - [ ] **NESTED_IDE_PATH**：在 IDE skills 目录内安装时提示嵌套确认
 - [ ] **EXISTS**：目标已有同名目录时提示覆盖
 

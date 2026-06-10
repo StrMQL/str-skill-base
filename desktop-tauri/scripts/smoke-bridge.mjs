@@ -219,6 +219,20 @@ async function runAllChannels() {
       }
     },
     {
+      name: 'collections:get (validation)',
+      run: async () => {
+        const r = await bridgeInvoke('collections:get', ['']);
+        assertError('collections:get', r, 'collection ref required');
+      }
+    },
+    {
+      name: 'collections:install (validation)',
+      run: async () => {
+        const r = await bridgeInvoke('collections:install', [{}]);
+        assertError('collections:install', r, 'collection ref required');
+      }
+    },
+    {
       name: 'skills:search (network)',
       run: async () => {
         const r = await bridgeInvoke('skills:search', ['']);
@@ -226,6 +240,17 @@ async function runAllChannels() {
           if (!Array.isArray(r.result)) throw new Error('skills:search: expected array');
         } else if (!/fetch|ECONNREFUSED|network|连接|超时/i.test(r.error || '')) {
           throw new Error(`skills:search: unexpected error: ${r.error}`);
+        }
+      }
+    },
+    {
+      name: 'collections:list (network)',
+      run: async () => {
+        const r = await bridgeInvoke('collections:list', []);
+        if (r.ok) {
+          if (!Array.isArray(r.result)) throw new Error('collections:list: expected array');
+        } else if (!/fetch|ECONNREFUSED|network|连接|超时/i.test(r.error || '')) {
+          throw new Error(`collections:list: unexpected error: ${r.error}`);
         }
       }
     },

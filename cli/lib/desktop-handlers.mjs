@@ -178,6 +178,42 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
     return null;
   }
 
+  function resolveInstallTargets(rawTargets, installProjectRoot) {
+    if (rawTargets.length === 0) {
+      throw new Error('请至少选择一个安装目录');
+    }
+
+    const resolved = [];
+    for (const entry of rawTargets) {
+      const spec = resolveInstallTarget(entry, installProjectRoot);
+      if (!spec) {
+        throw new Error('无效的安装目标');
+      }
+      resolved.push(spec);
+    }
+    return resolved;
+  }
+
+  function checkNestedInstallTargets(resolved, acceptNested) {
+    for (const spec of resolved) {
+      const insideIde = cli.detectInsideIdeDir(spec.nestedCheckDir);
+      if (insideIde && !acceptNested) {
+        return {
+          ok: false,
+          code: 'NESTED_IDE_PATH',
+          detail:
+            spec.kind === 'custom'
+              ? `所选目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`
+              : spec.kind === 'project'
+                ? `项目目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`
+                : `当前目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`,
+          ideId: insideIde.id
+        };
+      }
+    }
+    return null;
+  }
+
   const handlers = {
     'config:get': async () => {
       const { baseUrl } = cli.getConfig();
@@ -254,6 +290,13 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       const { baseUrl } = cli.getConfig();
       const base = String(baseUrl || '').replace(/\/+$/, '');
       if (!base) throw new Error('未配置服务器地址');
+
+      const collectionRef = String(payload?.collectionRef || '').trim();
+      if (collectionRef) {
+        const url = `${base}/collections/${encodeURIComponent(collectionRef)}`;
+        await deps.openExternal(url);
+        return { url };
+      }
 
       const skillId = String(payload?.skillId || '').trim();
       if (!skillId) throw new Error('skillId required');
@@ -380,35 +423,9 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
       if (!skillId) {
         throw new Error('skillId required');
       }
-      if (rawTargets.length === 0) {
-        throw new Error('请至少选择一个安装目录');
-      }
-
-      const resolved = [];
-      for (const entry of rawTargets) {
-        const spec = resolveInstallTarget(entry, installProjectRoot);
-        if (!spec) {
-          throw new Error('无效的安装目标');
-        }
-        resolved.push(spec);
-      }
-
-      for (const spec of resolved) {
-        const insideIde = cli.detectInsideIdeDir(spec.nestedCheckDir);
-        if (insideIde && !acceptNested) {
-          return {
-            ok: false,
-            code: 'NESTED_IDE_PATH',
-            detail:
-              spec.kind === 'custom'
-                ? `所选目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`
-                : spec.kind === 'project'
-                  ? `项目目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`
-                  : `当前目录已在 ${insideIde.name} 的 skill 路径内，若仍要安装请勾选确认嵌套。`,
-            ideId: insideIde.id
-          };
-        }
-      }
+      const resolved = resolveInstallTargets(rawTargets, installProjectRoot);
+      const nestedProblem = checkNestedInstallTargets(resolved, acceptNested);
+      if (nestedProblem) return nestedProblem;
 
       for (const spec of resolved) {
         const installPathCandidate = path.join(path.resolve(spec.targetDir), skillId);
@@ -450,6 +467,95 @@ export function registerDesktopHandlers(cli, cliLibRoot, deps) {
         skillId,
         version: actualVersion,
         installed
+      };
+    },
+
+    'collections:list': async () => {
+      const client = cli.createClient();
+      const result = await client.get('/collections');
+      return result.collections || [];
+    },
+
+    'collections:get': async (collectionRef) => {
+      const ref = String(collectionRef || '').trim();
+      if (!ref) throw new Error('collection ref required');
+      return cli.fetchCollectionDetail(ref);
+    },
+
+    'collections:install': async (payload) => {
+      const collectionRef = String(payload?.collectionRef || '').trim();
+      const installProjectRoot =
+        typeof payload?.projectRoot === 'string' ? payload.projectRoot.trim() : '';
+      const overwrite = Boolean(payload?.overwrite);
+      const acceptNested = Boolean(payload?.acceptNested);
+      const rawTargets = Array.isArray(payload?.targets) ? payload.targets : [];
+
+      if (!collectionRef) throw new Error('collection ref required');
+
+      const detail = await cli.fetchCollectionDetail(collectionRef);
+      const collection = detail.collection || { id: collectionRef, slug: collectionRef, name: collectionRef };
+      const skills = (detail.skills || []).filter((skill) => skill.latest_version);
+      if (skills.length === 0) {
+        throw new Error('集合内没有可安装的 Skill');
+      }
+
+      const resolved = resolveInstallTargets(rawTargets, installProjectRoot);
+      const nestedProblem = checkNestedInstallTargets(resolved, acceptNested);
+      if (nestedProblem) return nestedProblem;
+
+      const conflictPaths = [];
+      for (const spec of resolved) {
+        for (const skill of skills) {
+          const installPathCandidate = path.join(path.resolve(spec.targetDir), skill.id);
+          if (fs.existsSync(installPathCandidate)) conflictPaths.push(installPathCandidate);
+        }
+      }
+      if (conflictPaths.length > 0 && !overwrite) {
+        return {
+          ok: false,
+          code: 'EXISTS',
+          detail: '目标目录已存在同名 Skill，请勾选覆盖后重试。',
+          paths: conflictPaths
+        };
+      }
+
+      const installed = [];
+      for (const spec of resolved) {
+        fs.mkdirSync(spec.targetDir, { recursive: true });
+        for (const skill of skills) {
+          const installPathCandidate = path.join(path.resolve(spec.targetDir), skill.id);
+          if (fs.existsSync(installPathCandidate)) {
+            fs.rmSync(installPathCandidate, { recursive: true, force: true });
+          }
+        }
+
+        const buffer = await cli.downloadCollectionZip(collectionRef);
+        await cli.extractCollectionZip(buffer, spec.targetDir);
+
+        for (const skill of skills) {
+          const installPath = path.join(path.resolve(spec.targetDir), skill.id);
+          if (!fs.existsSync(installPath)) continue;
+          cli.rememberSkillInstall({
+            skillId: skill.id,
+            installPath,
+            version: skill.latest_version,
+            ide: spec.ide,
+            isGlobal: spec.global
+          });
+          installed.push({
+            skillId: skill.id,
+            installPath,
+            version: skill.latest_version,
+            label: spec.label
+          });
+        }
+      }
+
+      return {
+        ok: true,
+        collection,
+        installed,
+        skillCount: skills.length
       };
     },
 

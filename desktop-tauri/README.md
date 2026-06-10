@@ -78,7 +78,7 @@ SKB_NODE_TARGET=darwin-arm64 pnpm prepare:resources   # darwin-arm64 | darwin-x6
 
 ## 验收
 
-完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（22 IPC channel、手动 UI 场景）。
+完整清单见 [ACCEPTANCE.md](./ACCEPTANCE.md)（25 IPC channel、手动 UI 场景）。
 
 发布前建议：
 

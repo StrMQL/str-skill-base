@@ -12,6 +12,8 @@ const appLogoSrc = inject('appLogoSrc', null);
 const currentTab = ref('installed');
 const searchQuery = ref('');
 const marketQuery = ref('');
+const collectionQuery = ref('');
+const installedViewMode = ref(localStorage.getItem('skill-base-desktop-installed-view') || 'card');
 const marketOnlyFavorites = ref(false);
 const marketSelectedTagIds = ref([]);
 const showMarketTagDropdown = ref(false);
@@ -20,6 +22,12 @@ const marketTagDropdownRef = ref(null);
 const config = ref({ baseUrl: '', username: null, hasToken: false, projectRoot: '' });
 const installedSkills = ref([]);
 const marketSkills = ref([]);
+const collections = ref([]);
+const hasCollections = ref(false);
+const collectionsLoaded = ref(false);
+const selectedCollection = ref(null);
+const selectedCollectionSkills = ref([]);
+const collectionDetailLoading = ref(false);
 const globalTargets = ref([]);
 const projectTargets = ref([]);
 
@@ -44,7 +52,10 @@ const isTestingConnection = ref(false);
 
 // Install modal
 const installModalOpen = ref(false);
+const installKind = ref('skill');
 const installSkill = ref(null);
+const installCollection = ref(null);
+const installCollectionSkills = ref([]);
 const installVersion = ref('');
 const installVersions = ref([]);
 const installVersionsLoading = ref(false);
@@ -84,6 +95,8 @@ const pathsModalSkill = ref(null);
 const DIR_PREVIEW_COUNT = 2;
 const PATH_DISPLAY_MAX = 52;
 
+if (!['card', 'list'].includes(installedViewMode.value)) installedViewMode.value = 'card';
+
 const updatesAvailable = computed(() =>
   installedSkills.value.filter((s) => s.version && s.latest && s.version !== s.latest).length
 );
@@ -91,6 +104,7 @@ const updatesAvailable = computed(() =>
 const currentTabLabel = computed(() => {
   if (currentTab.value === 'installed') return t('tabs.installed');
   if (currentTab.value === 'market') return t('tabs.market');
+  if (currentTab.value === 'collections') return t('tabs.collections');
   return currentTab.value;
 });
 
@@ -111,6 +125,22 @@ const canConfirmInstall = computed(() => {
     return Boolean(installProjectRootPicked.value && selectedProjectTargetIds.value.length > 0);
   }
   return false;
+});
+
+const installTitle = computed(() => {
+  if (installKind.value === 'collection') {
+    return t('install.collectionTitle', {
+      name: installCollection.value?.name || installCollection.value?.slug || ''
+    });
+  }
+  return t('install.title', { name: installSkill.value?.name || installSkill.value?.id });
+});
+
+const installSummary = computed(() => {
+  if (installKind.value !== 'collection') return '';
+  return t('install.collectionSummary', {
+    count: installCollectionSkills.value.filter((skill) => skill.latest_version).length
+  });
 });
 
 const projectAgentStepDisabled = computed(() => !installProjectRootPicked.value);
@@ -230,6 +260,14 @@ function isInstalled(skillId) {
   return installedSkills.value.some((s) => s.skillId === skillId);
 }
 
+function setViewMode(kind, mode) {
+  if (mode !== 'card' && mode !== 'list') return;
+  if (kind === 'installed') {
+    installedViewMode.value = mode;
+    localStorage.setItem('skill-base-desktop-installed-view', mode);
+  }
+}
+
 async function loadGlobalTargets() {
   globalTargets.value = await window.skb.invoke('config:getGlobalTargets');
 }
@@ -281,6 +319,60 @@ async function loadMarket() {
   } finally {
     loading.value = false;
   }
+}
+
+async function loadCollections(options = {}) {
+  const silent = Boolean(options.silent);
+  if (!silent) loading.value = true;
+  try {
+    collections.value = await window.skb.invoke('collections:list');
+    hasCollections.value = collections.value.length > 0;
+    collectionsLoaded.value = true;
+    if (!hasCollections.value && currentTab.value === 'collections') {
+      selectedCollection.value = null;
+      selectedCollectionSkills.value = [];
+      currentTab.value = 'market';
+    }
+  } catch (e) {
+    collections.value = [];
+    hasCollections.value = false;
+    collectionsLoaded.value = true;
+    if (!silent) showToast(t('toast.loadFailed', { message: errMessage(e) }));
+  } finally {
+    if (!silent) loading.value = false;
+  }
+}
+
+const filteredCollections = computed(() => {
+  const q = collectionQuery.value.trim().toLowerCase();
+  if (!q) return collections.value;
+  return collections.value.filter(
+    (collection) =>
+      collection.name?.toLowerCase().includes(q) ||
+      collection.slug?.toLowerCase().includes(q) ||
+      collection.description?.toLowerCase().includes(q)
+  );
+});
+
+async function openCollection(collection) {
+  selectedCollection.value = collection;
+  selectedCollectionSkills.value = [];
+  collectionDetailLoading.value = true;
+  try {
+    const ref = collection.slug || collection.id;
+    const detail = await window.skb.invoke('collections:get', ref);
+    selectedCollection.value = detail.collection || collection;
+    selectedCollectionSkills.value = detail.skills || [];
+  } catch (e) {
+    showToast(t('toast.loadFailed', { message: errMessage(e) }));
+  } finally {
+    collectionDetailLoading.value = false;
+  }
+}
+
+function closeCollectionDetail() {
+  selectedCollection.value = null;
+  selectedCollectionSkills.value = [];
 }
 
 const marketAvailableTags = computed(() => {
@@ -369,6 +461,20 @@ async function openMarketSkillDetail(skill) {
   }
 }
 
+async function openCollectionOnline(collection) {
+  const ref = collection?.id;
+  if (!ref) return;
+  if (!config.value.baseUrl) {
+    promptConfigureServer();
+    return;
+  }
+  try {
+    await window.skb.invoke('skills:openWebPage', { collectionRef: ref });
+  } catch (e) {
+    showToast(t('toast.openFailed', { message: e.message }));
+  }
+}
+
 async function pickProjectRoot() {
   const root = await window.skb.invoke('project:pickRoot');
   if (root) {
@@ -378,7 +484,10 @@ async function pickProjectRoot() {
 }
 
 async function openInstallModal(skill) {
+  installKind.value = 'skill';
   installSkill.value = skill;
+  installCollection.value = null;
+  installCollectionSkills.value = [];
   installVersion.value = '';
   installVersions.value = [];
   installVersionsLoading.value = true;
@@ -407,6 +516,30 @@ async function openInstallModal(skill) {
   } finally {
     installVersionsLoading.value = false;
   }
+}
+
+async function openCollectionInstallModal(collection, skills = []) {
+  installKind.value = 'collection';
+  installSkill.value = null;
+  installCollection.value = collection;
+  installCollectionSkills.value = skills;
+  installVersion.value = '';
+  installVersions.value = [];
+  installVersionsLoading.value = false;
+  installOverwrite.value = false;
+  installAcceptNested.value = false;
+  installNestedWarn.value = false;
+  customDirOptions.value = [];
+  selectedCustomDirs.value = [];
+  installProjectRoot.value = '';
+  installProjectRootPicked.value = false;
+  installTargetTab.value = 'global';
+  agentTargetFilter.value = '';
+  selectedGlobalTargetIds.value = [];
+  selectedProjectTargetIds.value = [];
+  installModalOpen.value = true;
+  await loadGlobalTargets();
+  await loadProjectTargetTemplates();
 }
 
 async function pickCustomInstallDir() {
@@ -446,9 +579,43 @@ watch(installTargetTab, async (tab) => {
 });
 
 async function confirmInstall() {
-  if (!installSkill.value || !installVersion.value || !canConfirmInstall.value) return;
+  if (!canConfirmInstall.value) return;
+  if (installKind.value === 'skill' && (!installSkill.value || !installVersion.value)) return;
+  if (installKind.value === 'collection' && !installCollection.value) return;
   installing.value = true;
   try {
+    if (installKind.value === 'collection') {
+      const collectionRef = installCollection.value.slug || installCollection.value.id;
+      const result = await window.skb.invoke('collections:install', {
+        collectionRef,
+        targets: buildInstallTargetsPayload(),
+        projectRoot: installTargetTab.value === 'project' ? installProjectRoot.value : undefined,
+        overwrite: installOverwrite.value,
+        acceptNested: installAcceptNested.value
+      });
+
+      if (!result.ok) {
+        if (result.code === 'NESTED_IDE_PATH') {
+          installNestedWarn.value = true;
+          showToast(result.detail);
+          return;
+        }
+        if (result.code === 'EXISTS') {
+          showToast(result.detail);
+          return;
+        }
+        throw new Error(result.detail || t('toast.installFailed', { message: '' }));
+      }
+
+      installModalOpen.value = false;
+      showToast(t('toast.collectionInstalled', {
+        name: installCollection.value.name || collectionRef,
+        count: result.installed?.length || 0
+      }));
+      await loadInstalled();
+      return;
+    }
+
     const skillId = installSkill.value.id || installSkill.value.skillId;
     const result = await window.skb.invoke('skills:install', {
       skillId,
@@ -601,6 +768,7 @@ async function saveServer() {
   try {
     await window.skb.invoke('config:setServer', registryUrl.value);
     await loadConfig();
+    await loadCollections({ silent: true });
     showToast(t('toast.serverSaved'));
   } catch (e) {
     showToast(t('toast.saveFailed', { message: errMessage(e) }));
@@ -620,6 +788,7 @@ async function exchangePat() {
     patReady.value = true;
     verificationCode.value = '';
     await loadConfig();
+    await loadCollections({ silent: true });
     showToast(t('toast.loginSuccess', { username: result.username }));
   } catch (e) {
     showToast(t('toast.verifyFailed', { message: e.message }));
@@ -659,6 +828,7 @@ async function logout() {
     await window.skb.invoke('auth:logout');
     patReady.value = false;
     await loadConfig();
+    await loadCollections({ silent: true });
     showToast(t('toast.loggedOut'));
   } catch (e) {
     showToast(t('toast.logoutFailed', { message: e.message }));
@@ -723,12 +893,18 @@ const filteredProjectTargets = computed(() => {
 watch(currentTab, (tab) => {
   if (tab === 'installed') loadInstalled();
   if (tab === 'market' && marketSkills.value.length === 0) loadMarket();
+  if (tab === 'collections' && !hasCollections.value) {
+    currentTab.value = 'market';
+    return;
+  }
+  if (tab === 'collections' && !collectionsLoaded.value) loadCollections();
 });
 
 onMounted(async () => {
   document.addEventListener('mousedown', onDocumentPointerDown, true);
   await loadConfig();
   await loadInstalled();
+  await loadCollections({ silent: true });
 });
 
 onUnmounted(() => {
@@ -763,6 +939,14 @@ onUnmounted(() => {
           <i class="fa-solid fa-globe"></i>
           {{ t('nav.market') }}
         </button>
+        <button
+          v-if="hasCollections"
+          :class="['nav-btn', { active: currentTab === 'collections' }]"
+          @click="currentTab = 'collections'"
+        >
+          <i class="fa-solid fa-layer-group"></i>
+          {{ t('nav.collections') }}
+        </button>
       </nav>
 
       <div class="sidebar-bottom">
@@ -795,7 +979,7 @@ onUnmounted(() => {
       </header> -->
 
       <div
-        v-if="currentTab === 'installed' || currentTab === 'market'"
+        v-if="currentTab === 'installed' || currentTab === 'market' || currentTab === 'collections'"
         class="content-toolbar"
         :class="{ 'content-toolbar--market': currentTab === 'market' }"
       >
@@ -809,10 +993,16 @@ onUnmounted(() => {
               :placeholder="t('search.installed')"
             />
             <input
-              v-else
+              v-else-if="currentTab === 'market'"
               v-model="marketQuery"
               type="search"
               :placeholder="t('search.market')"
+            />
+            <input
+              v-else
+              v-model="collectionQuery"
+              type="search"
+              :placeholder="t('search.collections')"
             />
             <button
               v-if="currentTab === 'market' && marketQuery"
@@ -822,6 +1012,34 @@ onUnmounted(() => {
               @click="marketQuery = ''"
             >
               <i class="fa-solid fa-xmark"></i>
+            </button>
+            <button
+              v-if="currentTab === 'collections' && collectionQuery"
+              type="button"
+              class="search-clear-btn"
+              :title="t('search.clear')"
+              @click="collectionQuery = ''"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+
+          <div v-if="currentTab === 'installed'" class="view-toggle" :aria-label="t('view.mode')">
+            <button
+              type="button"
+              :class="{ active: installedViewMode === 'card' }"
+              :title="t('view.card')"
+              @click="setViewMode('installed', 'card')"
+            >
+              <i class="fa-solid fa-grip"></i>
+            </button>
+            <button
+              type="button"
+              :class="{ active: installedViewMode === 'list' }"
+              :title="t('view.list')"
+              @click="setViewMode('installed', 'list')"
+            >
+              <i class="fa-solid fa-list"></i>
             </button>
           </div>
 
@@ -930,11 +1148,11 @@ onUnmounted(() => {
             <div v-else-if="!filteredInstalled().length" class="empty-state">
               {{ t('installed.empty') }}
             </div>
-            <div v-else class="skill-grid-3">
+            <div v-else :class="installedViewMode === 'list' ? 'skill-list' : 'skill-grid-3'">
               <div
                 v-for="skill in filteredInstalled()"
                 :key="skill.skillId"
-                class="skill-card glass-panel"
+                :class="installedViewMode === 'list' ? 'skill-row glass-panel' : 'skill-card glass-panel'"
               >
                 <div class="skill-card-glow"></div>
                 <div class="skill-card-header">
@@ -1100,6 +1318,144 @@ onUnmounted(() => {
               </div>
             </div>
           </div>
+
+          <!-- Collections -->
+          <div v-else-if="currentTab === 'collections'" key="collections">
+            <div v-if="!selectedCollection" class="section-header">
+              <div>
+                <h2>{{ t('collections.title') }}</h2>
+                <p class="subtitle">{{ t('collections.subtitle') }}</p>
+              </div>
+              <button
+                type="button"
+                class="btn-ghost toolbar-refresh-btn"
+                :disabled="loading"
+                :title="t('collections.refresh')"
+                @click="loadCollections"
+              >
+                <i class="fa-solid fa-arrows-rotate" :class="{ 'fa-spin': loading }"></i>
+              </button>
+            </div>
+
+            <template v-if="selectedCollection">
+              <div class="collection-detail-header">
+                <button type="button" class="btn-ghost" @click="closeCollectionDetail">
+                  <i class="fa-solid fa-chevron-left"></i>
+                  {{ t('collections.back') }}
+                </button>
+                <div class="collection-detail-actions">
+                  <button
+                    type="button"
+                    class="btn-ghost"
+                    @click="openCollectionOnline(selectedCollection)"
+                  >
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                    {{ t('collections.openOnline') }}
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-primary"
+                    :disabled="collectionDetailLoading || !selectedCollectionSkills.length"
+                    @click="openCollectionInstallModal(selectedCollection, selectedCollectionSkills)"
+                  >
+                    <i class="fa-solid fa-download"></i>
+                    {{ t('collections.install') }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="collection-hero glass-panel">
+                <div class="collection-cover">
+                  <span class="collection-cover-kicker">COLLECTION</span>
+                  <strong>{{ selectedCollection.name }}</strong>
+                  <span>{{ selectedCollection.slug }}</span>
+                </div>
+                <div class="collection-hero-main">
+                  <h2>{{ selectedCollection.name }}</h2>
+                  <p>{{ selectedCollection.description || t('collections.noDesc') }}</p>
+                  <div class="collection-meta">
+                    <span>
+                      <i class="fa-solid fa-cubes"></i>
+                      {{ t('collections.skillCount', { count: selectedCollectionSkills.length }) }}
+                    </span>
+                    <span>
+                      <i class="fa-solid fa-download"></i>
+                      {{ selectedCollection.download_count ?? 0 }}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="collectionDetailLoading" class="empty-state">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> {{ t('collections.loading') }}
+              </div>
+              <div v-else-if="!selectedCollectionSkills.length" class="empty-state">
+                {{ t('collections.emptySkills') }}
+              </div>
+              <div v-else class="collection-skill-list">
+                <div
+                  v-for="(skill, index) in selectedCollectionSkills"
+                  :key="skill.id"
+                  class="collection-skill-row glass-panel"
+                >
+                  <span class="skill-list-index">{{ index + 1 }}</span>
+                  <div class="skill-list-main">
+                    <div class="skill-list-title-row">
+                      <h3>{{ skill.name }}</h3>
+                      <span class="version-tag">v{{ skill.latest_version || '-' }}</span>
+                    </div>
+                    <p>{{ skill.description || skill.id }}</p>
+                  </div>
+                  <button
+                    type="button"
+                    class="btn-icon market-detail-btn"
+                    :title="t('market.openDetail')"
+                    @click="openMarketSkillDetail(skill)"
+                  >
+                    <i class="fa-solid fa-arrow-up-right-from-square"></i>
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <template v-else>
+              <div v-if="loading && !collections.length" class="empty-state">
+                <i class="fa-solid fa-circle-notch fa-spin"></i> {{ t('collections.loading') }}
+              </div>
+              <div v-else-if="!filteredCollections.length" class="empty-state">
+                {{ collectionQuery ? t('collections.emptyFiltered') : t('collections.empty') }}
+              </div>
+              <div v-else class="collection-grid">
+                <button
+                  v-for="collection in filteredCollections"
+                  :key="collection.id"
+                  type="button"
+                  class="collection-card glass-panel"
+                  @click="openCollection(collection)"
+                >
+                  <div class="collection-cover collection-cover--small">
+                    <span class="collection-cover-kicker">COLLECTION</span>
+                    <strong>{{ collection.name }}</strong>
+                    <span>{{ collection.slug }}</span>
+                  </div>
+                  <div class="collection-card-body">
+                    <h3>{{ collection.name }}</h3>
+                    <p>{{ collection.description || t('collections.noDesc') }}</p>
+                    <div class="collection-meta">
+                      <span>
+                        <i class="fa-solid fa-cubes"></i>
+                        {{ collection.skill_count ?? 0 }}
+                      </span>
+                      <span>
+                        <i class="fa-solid fa-download"></i>
+                        {{ collection.download_count ?? 0 }}
+                      </span>
+                    </div>
+                  </div>
+                </button>
+              </div>
+            </template>
+          </div>
         </Transition>
       </div>
 
@@ -1119,20 +1475,26 @@ onUnmounted(() => {
         <div class="modal-header">
           <h3>
             <i class="fa-solid fa-download text-indigo"></i>
-            {{ t('install.title', { name: installSkill?.name || installSkill?.id }) }}
+            {{ installTitle }}
           </h3>
           <button class="btn-icon" @click="installModalOpen = false">
             <i class="fa-solid fa-xmark"></i>
           </button>
         </div>
         <div class="modal-body">
-          <label class="field-label">{{ t('install.version') }}</label>
-          <VersionSelect
-            v-model="installVersion"
-            :versions="installVersions"
-            :loading="installVersionsLoading"
-            :disabled="installing"
-          />
+          <template v-if="installKind === 'skill'">
+            <label class="field-label">{{ t('install.version') }}</label>
+            <VersionSelect
+              v-model="installVersion"
+              :versions="installVersions"
+              :loading="installVersionsLoading"
+              :disabled="installing"
+            />
+          </template>
+          <div v-else class="install-summary">
+            <i class="fa-solid fa-layer-group"></i>
+            {{ installSummary }}
+          </div>
 
           <label class="field-label" style="margin-top: 1rem">{{ t('install.targets') }}</label>
 
@@ -1352,7 +1714,7 @@ onUnmounted(() => {
           <button class="btn-ghost" @click="installModalOpen = false">{{ t('install.cancel') }}</button>
           <button
             class="btn-primary"
-            :disabled="installing || installVersionsLoading || !installVersion || !canConfirmInstall"
+            :disabled="installing || installVersionsLoading || (installKind === 'skill' && !installVersion) || !canConfirmInstall"
             @click="confirmInstall"
           >
             <i v-if="installing" class="fa-solid fa-circle-notch fa-spin"></i>
@@ -1666,6 +2028,8 @@ onUnmounted(() => {
 .app-layout .project-path,
 .app-layout .skill-card,
 .app-layout .market-card,
+.app-layout .skill-row,
+.app-layout .collection-card,
 .app-layout .content-toolbar,
 .app-layout .content-area,
 .app-layout .tag-filter-dropdown,
@@ -1968,6 +2332,37 @@ onUnmounted(() => {
   flex-shrink: 0;
 }
 
+.view-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 9999px;
+  background: rgba(var(--color-base-950-rgb), 0.5);
+}
+
+.view-toggle button {
+  width: 1.75rem;
+  height: 1.5rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-base-400);
+  cursor: pointer;
+}
+
+.view-toggle button:hover {
+  color: var(--color-fg-strong);
+}
+
+.view-toggle button.active {
+  background: var(--accent-bg-subtle);
+  color: var(--color-accent-light);
+}
+
 .content-toolbar--market .filter-chip {
   padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
@@ -2177,6 +2572,13 @@ onUnmounted(() => {
   gap: 1.25rem;
 }
 
+.skill-list,
+.collection-skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+}
+
 @container skill-content (min-width: 72rem) {
   .skill-grid-3 {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2184,11 +2586,13 @@ onUnmounted(() => {
 }
 
 .skill-card,
-.market-card {
+.market-card,
+.skill-row {
   min-width: 0;
 }
 
-.skill-card {
+.skill-card,
+.skill-row {
   border-radius: 0.75rem;
   padding: 1.25rem;
   border: 1px solid var(--color-base-800);
@@ -2198,6 +2602,23 @@ onUnmounted(() => {
   position: relative;
   overflow: hidden;
   transition: border-color 0.2s;
+}
+
+.skill-row {
+  min-height: 0;
+  padding: 1rem 1.125rem;
+}
+
+.skill-row .skill-card-header {
+  margin-bottom: 0.35rem;
+}
+
+.skill-row .skill-card-footer {
+  padding-top: 0.625rem;
+}
+
+.skill-row .skill-dirs {
+  margin-top: 0.45rem;
 }
 
 .skill-card:hover {
@@ -2559,6 +2980,207 @@ button.dir-tag {
   color: var(--color-success-light);
   border: 1px solid rgba(var(--color-success-rgb), 0.2);
   cursor: not-allowed;
+}
+
+.collection-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@container skill-content (min-width: 72rem) {
+  .collection-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.collection-card {
+  display: flex;
+  align-items: stretch;
+  gap: 1rem;
+  min-width: 0;
+  padding: 1rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.75rem;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.2s, transform 0.2s;
+}
+
+.collection-card:hover {
+  border-color: var(--accent-border-strong);
+  transform: translateY(-1px);
+}
+
+.collection-card-body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.collection-card-body h3 {
+  margin: 0 0 0.35rem;
+  font-size: 1rem;
+  color: var(--color-fg-strong);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.collection-card-body p,
+.collection-hero-main p,
+.collection-skill-row p {
+  margin: 0;
+  color: var(--color-base-400);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.collection-card-body p {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.collection-cover {
+  width: 7rem;
+  min-height: 9rem;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid var(--accent-border-mid);
+  background:
+    linear-gradient(135deg, rgba(var(--color-accent-rgb), 0.24), transparent 62%),
+    rgba(var(--color-base-900-rgb), 0.7);
+  box-shadow: inset -0.5rem 0 0 rgba(0, 0, 0, 0.12);
+}
+
+.collection-cover--small {
+  width: 5.75rem;
+  min-height: 7.5rem;
+}
+
+.collection-cover-kicker,
+.collection-cover span {
+  color: var(--color-base-400);
+  font-size: 0.625rem;
+  font-family: ui-monospace, monospace;
+}
+
+.collection-cover strong {
+  color: var(--color-heading);
+  font-size: 0.875rem;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.collection-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.collection-detail-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.collection-hero {
+  display: flex;
+  gap: 1.25rem;
+  align-items: stretch;
+  padding: 1rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.collection-hero-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.collection-hero-main h2 {
+  margin: 0 0 0.5rem;
+  color: var(--color-heading);
+}
+
+.collection-meta {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: auto;
+  padding-top: 0.75rem;
+  color: var(--color-base-400);
+  font-size: 0.6875rem;
+  font-family: ui-monospace, monospace;
+}
+
+.collection-meta span {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.collection-skill-row {
+  display: flex;
+  align-items: center;
+  gap: 0.875rem;
+  padding: 0.875rem 1rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.625rem;
+}
+
+.skill-list-index {
+  width: 1.5rem;
+  flex-shrink: 0;
+  color: var(--color-base-400);
+  font-family: ui-monospace, monospace;
+  font-size: 0.75rem;
+}
+
+.skill-list-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.skill-list-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.skill-list-title-row h3 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 0.9375rem;
+  color: var(--color-fg-strong);
+}
+
+.install-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem;
+  border: 1px solid var(--color-base-800);
+  border-radius: 0.5rem;
+  color: var(--color-fg-muted);
+  background: rgba(var(--color-base-950-rgb), 0.45);
 }
 
 .settings-modal {
