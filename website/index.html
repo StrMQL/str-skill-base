@@ -624,6 +624,7 @@ Risk: UI review needs help</span></pre>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-docker"><span class="i18n-zh">Docker 部署</span><span class="i18n-en">Docker</span></button>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-install"><span class="i18n-zh">安装 CLI</span><span class="i18n-en">Install CLI</span></button>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-search"><span class="i18n-zh">搜索安装</span><span class="i18n-en">Search &amp; install</span></button>
+            <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-collections"><span class="i18n-zh">技能集合</span><span class="i18n-en">Collections</span></button>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-publish"><span class="i18n-zh">发布 Skill</span><span class="i18n-en">Publish</span></button>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-ide"><span class="i18n-zh">IDE 集成</span><span class="i18n-en">IDE</span></button>
             <button type="button" class="tab category-button" role="tab" aria-selected="false" data-tab="tab-desktop"><span class="i18n-zh">桌面客户端</span><span class="i18n-en">Desktop</span></button>
@@ -754,6 +755,46 @@ Risk: UI review needs help</span></pre>
 <span class="keyword">skb</span> <span class="command">install</span> <span class="string">react-best-practice</span>
 
 <span class="output">✓ Installed react-best-practice@v20240320.143022</span></span></div>
+            </div>
+          </div>
+
+          <div id="tab-collections" class="tab-content">
+            <p class="quick-start-lead">
+              <span class="i18n-zh">技能集合（Collection）是管理员为团队或岗位策划的推荐包，例如「前端组必装」「产品经理常用」。同一 Skill 可出现在多个集合中。数字员工或新成员无需逐个挑选，一键安装对应角色所需的全部 Skill。</span>
+              <span class="i18n-en">Collections are admin-curated packs for teams or roles—e.g. frontend essentials or PM toolkit. A Skill can appear in multiple collections. New teammates or digital workers install everything for a role in one step.</span>
+            </p>
+            <div class="code-block">
+              <div class="code-header">
+                <div class="code-dots">
+                  <span class="code-dot red"></span>
+                  <span class="code-dot yellow"></span>
+                  <span class="code-dot green"></span>
+                </div>
+                <button type="button" class="code-copy"><span class="i18n-zh">复制</span><span class="i18n-en">Copy</span></button>
+              </div>
+              <div class="code-body"><span class="i18n-zh"><span class="comment"># 在 Web 管理后台浏览集合（登录后）</span>
+<span class="output">打开 http://localhost:8000 → 技能集合</span>
+
+<span class="comment"># 一键安装整个集合（支持 ID 或 slug）</span>
+<span class="keyword">skb</span> <span class="command">install</span> <span class="flag">--collection</span> <span class="string">frontend-essentials</span>
+
+<span class="output">✓ 已安装集合内 12 个 Skill</span>
+
+<span class="comment"># 直接安装到 Cursor，适合数字员工快速就绪</span>
+<span class="keyword">skb</span> <span class="command">install</span> <span class="flag">--collection</span> <span class="string">pm-toolkit</span> <span class="flag">-i</span> <span class="string">cursor</span>
+
+<span class="output">✓ 已安装集合内 8 个 Skill → .cursor/skills/</span></span><span class="i18n-en"><span class="comment"># Browse collections in the web console (after sign-in)</span>
+<span class="output">Open http://localhost:8000 → Collections</span>
+
+<span class="comment"># Install an entire collection (ID or slug)</span>
+<span class="keyword">skb</span> <span class="command">install</span> <span class="flag">--collection</span> <span class="string">frontend-essentials</span>
+
+<span class="output">✓ Installed 12 skill(s) from collection</span>
+
+<span class="comment"># Install into Cursor—onboard a digital worker in one shot</span>
+<span class="keyword">skb</span> <span class="command">install</span> <span class="flag">--collection</span> <span class="string">pm-toolkit</span> <span class="flag">-i</span> <span class="string">cursor</span>
+
+<span class="output">✓ Installed 8 skill(s) from collection → .cursor/skills/</span></span></div>
             </div>
           </div>
 

@@ -1,14 +1,17 @@
 ---
 name: skill-base-cli
 description: >-
-  The official Skill Base CLI client. Use the `skb` (Skill Base CLI) command to search, install, update, publish, and import-from-GitHub skills from Skill Base, as well as configure skb. Triggered when users say "publish skill to skill base", "import skill from github", "download/update skill from skill base", "configure skb", "am I logged in", "check skb login", or "configure skill-base-cli".
+  The official Skill Base CLI client. Use the `skb` (Skill Base CLI) command to search, install (single skill or collection), update, delete, publish, and import-from-GitHub skills from Skill Base, as well as configure skb. Triggered when users say "publish skill to skill base", "install collection", "import skill from github", "download/update/delete skill from skill base", "configure skb", "am I logged in", "check skb login", or "configure skill-base-cli".
 keywords:
   - skill-base-cli
   - skb
   - whoami
   - install skill
+  - install collection
+  - collection
   - publish skill
   - update skill
+  - delete skill
   - search skill
   - query skill
 ---
@@ -18,7 +21,8 @@ keywords:
 Assistants should complete operations by **running terminal commands**. Package name **`skill-base-cli`**, command **`skb`** after installation.
 
 ## When to Use This Skill
-- Users request to search, install, update, or publish specific skills using the `skb` command.
+- Users request to search, install, update, delete, or publish specific skills using the `skb` command.
+- Users want to install an admin-curated **collection** (recommended skill pack) in one shot.
 - Users need to configure the client connection address (`skb init`) or log in (`skb login`).
 - Users want to **search, install, update, or publish** Skills to a privately deployed Skill Base site.
 
@@ -35,7 +39,7 @@ Assistants should complete operations by **running terminal commands**. Package 
 
 ## Login and Authentication Rules (Important)
 - **No login required**: `search`, `install`, `update`, `init` and other regular read operations usually do not require login. Assistants **should not** proactively ask users to log in before these operations.
-- **Login required**: **`skb publish` must be logged in**.
+- **Login required**: **`skb publish`** and **`skb import-github`** must be logged in.
 - **Login flow (`skb login`)**:
   1. Execute `skb login` in the terminal.
   2. The console will output a login page URL containing `from=cli`, open the login page in a browser.
@@ -55,23 +59,41 @@ skb search <keyword>
 skb install <skill_id>              # Latest version
 skb install <skill_id>@<version>    # Specific version, e.g., v20260327.161122
 skb install <skill_id> -d <target_directory>
+skb install <skill_id> -i cursor      # Install to IDE skill directory
+skb install <skill_id> -i cursor -g # Global IDE directory (where supported)
 ```
 
-Optional: Install to an IDE's skill directory, e.g., `skb install <skill_id> -i cursor`; use `-g` for global installation (supported by some IDEs only).
+Options: `-d/--dir`, `-i/--ide` (alias `-a/--agent`), `-g/--global`. Common IDE values: `cursor`, `claude-code`, `codex`, `copilot`, `windsurf`, `qoder`, `opencode`, `trae`, `openclaw`, `codebuddy`, and others — run `skb install --help` for the full list.
 
-## Update Installed Skills
+### Install a Collection
+
+Collections are admin-curated flat packs (e.g. "frontend team essentials"), not a folder tree. One command downloads the collection zip and installs all member skills.
 
 ```bash
-skb update <skill_id>
-skb update <skill_id> -d <directory>
-skb list
-skb ls
+skb install --collection <id_or_slug>
+skb install --collection 1 --ide cursor
+skb install --collection frontend-team --ide cursor
 ```
 
-- `skb install` records the local install path, version, and timestamp in `~/.skill-base/config.json`
-- `skb list` / `skb ls` list all locally recorded skills, then let the user choose one to update, delete local files, or clear config records
-- `skb update <skill_id>` first shows the available versions with changelog and uploader, then lets the user multi-select one or more recorded install directories to update together
-- `skb update <skill_id> -d <directory>` still works as an explicit one-off update for `<directory>/<skill_id>`
+- `target` (skill id) and `--collection` are mutually exclusive
+- On name conflicts, CLI lists all conflicting paths and asks once whether to overwrite all; cancel skips the entire collection install
+
+## Manage Local Installs
+
+```bash
+skb list                              # or: skb ls
+skb update <skill_id>
+skb update <skill_id> -d <directory>
+skb delete <skill_id>                 # or: skb rm
+skb delete <skill_id> --all
+skb delete <skill_id> -d <directory> -y
+```
+
+- `skb install` records install path, version, timestamp, IDE type, and global flag in `~/.skill-base/config.json`
+- `skb list` / `skb ls` aggregate by skill (most recent first); pick one to update, delete local files, or clear records only
+- `skb update <skill_id>` shows versions with changelog and uploader, then multi-select recorded install directories (or updates directly when only one exists)
+- `skb update <skill_id> -d <directory>` bypasses records and updates `<directory>/<skill_id>` directly
+- `skb delete <skill_id>` lists recorded install directories for multi-select (or `--all` / `-d` / `-y` for scripting); only removes paths whose directory name matches `skill_id`
 
 ## Publish
 
