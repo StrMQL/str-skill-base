@@ -53,7 +53,7 @@ npx skill-base -d ./skill-data -p 8000
 **CLI：**
 
 ```bash
-npm add -g skill-base-cli
+npm install -g skill-base-cli
 skb init -s http://localhost:8000
 skb search vue
 skb install some-skill --ide cursor

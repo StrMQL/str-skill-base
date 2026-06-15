@@ -1483,8 +1483,9 @@ html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-
   padding: 24px;
 }
 
-.desktop-download-lead {
-  color: var(--text-secondary);
+.desktop-download-lead,
+.quick-start-lead {
+  color: var(--body-text);
   line-height: 1.7;
   margin-bottom: 20px;
 }
@@ -1527,20 +1528,30 @@ html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-
   padding: 16px;
   border-radius: 12px;
   border: 1px solid var(--border-color);
-  background: var(--bg-terminal);
+  background: var(--canvas-softer);
   text-decoration: none;
-  color: inherit;
+  color: var(--text-primary);
   transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+html[data-theme="dark"] .desktop-download-card {
+  background: var(--bg-terminal);
 }
 
 .desktop-download-card:hover,
 .desktop-download-card:focus {
-  border-color: var(--accent-green);
+  border-color: var(--ink);
   transform: translateY(-1px);
 }
 
 .desktop-download-card.is-recommended {
-  border-color: rgba(0, 255, 136, 0.35);
+  border-color: var(--ink);
+  background: var(--canvas);
+}
+
+html[data-theme="dark"] .desktop-download-card.is-recommended {
+  border-color: rgba(255, 255, 255, 0.35);
+  background: var(--bg-terminal);
 }
 
 .desktop-download-card-head {
@@ -1561,21 +1572,36 @@ html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  color: var(--accent-green);
-  border: 1px solid rgba(0, 255, 136, 0.35);
+  color: var(--ink);
+  background: var(--accent-green-dim);
+  border: 1px solid var(--hairline);
   border-radius: 999px;
   padding: 2px 8px;
+}
+
+html[data-theme="dark"] .desktop-download-badge {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.25);
 }
 
 .desktop-download-card-file {
   font-family: var(--font-mono);
   font-size: 0.78rem;
-  color: var(--text-secondary);
+  color: var(--body-text);
   word-break: break-all;
+}
+
+html[data-theme="dark"] .desktop-download-card-file {
+  color: var(--text-secondary);
 }
 
 .desktop-download-card-size {
   font-size: 0.78rem;
+  color: var(--body-text);
+}
+
+html[data-theme="dark"] .desktop-download-card-size {
   color: var(--text-secondary);
 }
 
@@ -1614,12 +1640,12 @@ html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-
 }
 
 .quick-start-container {
-  /* 命令区固定宽度，切换 Tab 不再随内容伸缩 */
+  /* 外层仅作布局壳；命令区宽度由 .tab-content 单独约束 */
   display: flex;
   flex-direction: column;
   align-items: stretch;
   width: 100%;
-  max-width: min(720px, 100%);
+  max-width: 100%;
   margin-left: auto;
   margin-right: auto;
 }
@@ -1627,14 +1653,19 @@ html[data-theme="dark"] .openclaw-step-nav-item:hover:not(.is-active) .openclaw-
 .quick-start .tabs {
   margin-left: auto;
   margin-right: auto;
-  justify-content: flex-start;
+  justify-content: center;
   width: 100%;
-  max-width: 100%;
-  flex-wrap: nowrap;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-gutter: stable;
+  max-width: min(980px, 100%);
+  flex-wrap: wrap;
+  overflow-x: visible;
   box-sizing: border-box;
+}
+
+.quick-start .tab-content {
+  width: 100%;
+  max-width: min(720px, 100%);
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .quick-start .tabs .tab {

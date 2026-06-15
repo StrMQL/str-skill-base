@@ -1,11 +1,12 @@
 ---
 name: skill-base-web-deploy
 description: >-
-  Skill Base server deployment guide. Covers starting the Skill Base server (npx skill-base), Docker configuration, port mapping, and SQLite database backup. For deploying and operating the Skill Base platform itself only.
+  Skill Base server deployment guide. Covers starting the Skill Base server (npx skill-base), Docker configuration, port mapping, SQLite database backup, and platform capabilities (collections, tags, GitHub import). For deploying and operating the Skill Base platform itself only.
 keywords:
   - deploy skill-base
   - npx skill-base
   - skill-base docker
+  - collection
 ---
 
 # Skill Base Web Server Deployment
@@ -51,6 +52,21 @@ Debug mode example: `npx skill-base -v -d ./data`
 ## First Access
 
 When no administrator exists, opening the site in a browser will launch the **initialization wizard**: create a system administrator account and password. Afterward, team members need to be added by the administrator, and users log in via Web and CLI.
+
+## Platform Capabilities (Post-Deploy)
+
+After the server is running, the Web UI and CLI share the same backend:
+
+| Capability | Web UI | CLI |
+|------------|--------|-----|
+| Browse / search skills | Yes | `skb search` |
+| Version history & changelogs | Yes | `skb update` |
+| Tags & favorites | Yes (admin tag library; owner assigns tags) | — |
+| **Collections** (admin-curated packs, max 10 skills) | Browse on home | `skb install --collection <id_or_slug>` |
+| GitHub import (public repos only) | Publish page | `skb import-github` |
+| Desktop client | [docs/desktop.md](../../docs/desktop.md) | Same install/update logic as CLI |
+
+Collections are flat recommendation packs maintained by admins — they link to skills via `collection_skills`, not a folder hierarchy. Clients install the whole pack in one zip download.
 
 ## Development/Production Run from Source Directory
 
