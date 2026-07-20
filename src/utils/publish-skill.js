@@ -52,6 +52,9 @@ function publishSkillFromZip({ user, skillId, name, description, changelog, visi
       ).run(skill_id, user.id, 'owner', user.id);
     });
     createSkillTx();
+  } else if (description) {
+    // Update description for existing skills
+    SkillModel.update(skill_id, undefined, description, undefined, undefined);
   }
 
   const version = generateVersionNumber();
